@@ -21,7 +21,7 @@ API_TOKEN = config('API_TOKEN')
 YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
 YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
 
-BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}'
+BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}:443'
 WEBHOOK_PATH = '/webhook'
 PAYMENT_WEBHOOK_PATH = '/payment-webhook'
 
@@ -140,17 +140,12 @@ async def payment_webhook_handler(request):
 
 
 async def on_startup(bot: Bot) -> None:
-    pass
-    '''print(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}")
-    print(FSInputFile(WEBHOOK_SSL_CERT))
     # But if you have a valid SSL certificate, you SHOULD NOT send it to Telegram servers.
     await bot.set_webhook(
         f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}",
-        certificate=FSInputFile(WEBHOOK_SSL_CERT),
-        secret_token=WEBHOOK_SECRET,
     )
     time.sleep(3)
-    print(await bot.get_webhook_info())'''
+    print(await bot.get_webhook_info())
 
 
 if __name__ == '__main__':
