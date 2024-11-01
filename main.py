@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import FSInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
@@ -35,8 +35,7 @@ WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 # Роутер
 router = Router()
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
 
 # Настройка конфигурации ЮKassa
 Configuration.account_id = YOOKASSA_SHOP_ID
@@ -54,7 +53,7 @@ subscriptions = {
 payments = {}
 
 
-@router.message(Command('start'))
+@router.message(CommandStart())
 async def send_welcome(message: types.Message):
     await message.reply("""
 Привет! Выберите подписку: 
@@ -140,7 +139,7 @@ async def payment_webhook_handler(request):
 
 
 async def on_startup(bot: Bot) -> None:
-    print(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}")
+    print(bot.get_webhook_info())
     # But if you have a valid SSL certificate, you SHOULD NOT send it to Telegram servers.
     res = await bot.set_webhook(
         f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}",
@@ -151,6 +150,9 @@ async def on_startup(bot: Bot) -> None:
 
 
 if __name__ == '__main__':
+    # Настройка логирования
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
     dp = Dispatcher()
 
     dp.include_router(router)
