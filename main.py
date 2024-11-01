@@ -132,6 +132,8 @@ async def payment_webhook_handler(request):
             logging.info(f"Refund succeeded for payment id: {notification.object.id}")
             return web.Response(status=200)
 
+        else:
+            print('Unrecognized event type')
     except Exception as e:
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
