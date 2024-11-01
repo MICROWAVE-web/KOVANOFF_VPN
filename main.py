@@ -24,7 +24,7 @@ BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}'
 WEBHOOK_PATH = '/webhook'
 PAYMENT_WEBHOOK_PATH = '/payment-webhook'
 
-WEBAPP_HOST = 'localhost'
+WEBAPP_HOST = '127.0.0.1'
 WEBAPP_PORT = int(config("WEBAPP_PORT"))
 
 WEBHOOK_SECRET = config('WEBHOOK_SECRET')
