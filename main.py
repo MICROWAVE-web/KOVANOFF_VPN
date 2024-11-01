@@ -141,6 +141,7 @@ async def payment_webhook_handler(request):
 
 async def on_startup(bot: Bot) -> None:
     print(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}")
+    print(FSInputFile(WEBHOOK_SSL_CERT))
     # But if you have a valid SSL certificate, you SHOULD NOT send it to Telegram servers.
     await bot.set_webhook(
         f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}",
