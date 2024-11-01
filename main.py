@@ -171,7 +171,6 @@ if __name__ == '__main__':
     webhook_requests_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
-        secret_token=config("WEBHOOK_SECRET"),
     )
     # Register webhook handler on application
     webhook_requests_handler.register(app, path=WEBHOOK_PATH)
