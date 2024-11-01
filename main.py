@@ -1,6 +1,7 @@
 import logging
 import ssl
 import sys
+import time
 import uuid
 from datetime import datetime, timedelta
 
@@ -139,13 +140,14 @@ async def payment_webhook_handler(request):
 
 
 async def on_startup(bot: Bot) -> None:
-
+    print(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}")
     # But if you have a valid SSL certificate, you SHOULD NOT send it to Telegram servers.
     await bot.set_webhook(
         f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}",
         certificate=FSInputFile(WEBHOOK_SSL_CERT),
         secret_token=WEBHOOK_SECRET,
     )
+    time.sleep(3)
     print(await bot.get_webhook_info())
 
 
