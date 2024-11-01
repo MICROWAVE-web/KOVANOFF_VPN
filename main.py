@@ -25,7 +25,7 @@ WEBHOOK_PATH = '/webhook'
 PAYMENT_WEBHOOK_PATH = '/payment-webhook'
 
 WEBAPP_HOST = 'localhost'
-WEBAPP_PORT = int(config("WEBHOOK_PORT"))
+WEBAPP_PORT = int(config("WEBAPP_PORT"))
 
 WEBHOOK_SECRET = config('WEBHOOK_SECRET')
 
