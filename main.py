@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import ssl
 import sys
@@ -5,16 +6,19 @@ import time
 import uuid
 from datetime import datetime, timedelta
 
-from aiogram import Bot, Dispatcher, types, F, Router
+from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
-from aiogram.types import FSInputFile
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from decouple import config
 from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
+
+from keyboards import *
 
 API_TOKEN = config('API_TOKEN')
 
@@ -36,41 +40,31 @@ WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 # Роутер
 router = Router()
 
-
+# Режим проограммы
+mode = config('MODE')
 
 # Настройка конфигурации ЮKassa
 Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
-
-subscriptions = {
-    'month_1': {'name': 'Подписка VPN на месяц (1 устройство)', 'price': 50, 'period': timedelta(days=30)},
-    'month_2': {'name': 'Подписка VPN на месяц (2 устройства)', 'price': 75, 'period': timedelta(days=30)},
-    'month_3': {'name': 'Подписка VPN на месяц (3 устройства)', 'price': 100, 'period': timedelta(days=30)},
-    'year_1': {'name': 'Подписка VPN на год (1 устройство)', 'price': 500, 'period': timedelta(days=365)},
-    'year_2': {'name': 'Подписка VPN на год (2 устройства)', 'price': 750, 'period': timedelta(days=365)},
-    'year_3': {'name': 'Подписка VPN на год (3 устройства)', 'price': 1000, 'period': timedelta(days=365)},
-}
 
 payments = {}
 
 
 @router.message(CommandStart())
 async def send_welcome(message: types.Message):
-    await message.reply("""
-Привет! Выберите подписку: 
-/subscribe_month_1
-/subscribe_month_2
-/subscribe_month_3
-/subscribe_year_1
-/subscribe_year_2
-/subscribe_year_3
-    """)
+    await message.reply(get_welcome_message(), reply_markup=get_welcome_keyboard())
 
 
-@router.message(F.text.startswith("/subscribe_"))
-async def process_subscribe(message: types.Message):
-    command = message.text.lstrip('/')
-    subscription = subscriptions.get(command.split('_', 1)[1])
+@router.callback_query(F.data == 'get_sub')
+async def get_sub(call: CallbackQuery, state: FSMContext):
+    await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
+    await call.message.answer(text=get_subs_message()[1], reply_markup=get_subs_keyboard()[1])
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith("month_") | F.data.startswith("year_"))
+async def process_subscribe(call: CallbackQuery, state: FSMContext):
+    subscription = subscriptions.get(call.data)
     if subscription:
         payment = Payment.create({
             "amount": {
@@ -79,19 +73,26 @@ async def process_subscribe(message: types.Message):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": "https://google.com"
+                "return_url": "https://t.me/kovanoff_vpn_bot"
             },
             "capture": True,
             "description": subscription['name']
         }, uuid.uuid4())
         payments[payment.id] = {
-            'user_id': message.from_user.id,
+            'user_id': call.from_user.id,
             'subscription': subscription,
             'timestamp': datetime.now()
         }
-        await message.reply(f"Оплатите подписку: {payment.confirmation.confirmation_url}")
+        await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
+                                                                                        payment.confirmation.confirmation_url))
     else:
-        await message.reply("Неверная команда. Напишите /start")
+        await call.message.answer("Неверная команда. Напишите /start")
+    await state.clear()
+
+
+@router.message(Command('my_subs'))
+async def my_subs(message: types.Message):
+    pass
 
 
 @router.message(Command('refund'))
@@ -148,6 +149,12 @@ async def on_startup(bot: Bot) -> None:
     print(await bot.get_webhook_info())
 
 
+async def local_startup(bot: Bot) -> None:
+    await bot.delete_webhook()
+    time.sleep(3)
+    await dp.start_polling(bot)
+
+
 if __name__ == '__main__':
     # Настройка логирования
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -156,26 +163,31 @@ if __name__ == '__main__':
 
     dp.include_router(router)
 
-    dp.startup.register(on_startup)
-
     bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-    app = web.Application()
-    app.router.add_post(PAYMENT_WEBHOOK_PATH, payment_webhook_handler)
+    if mode == "local":
+        # Локальный запуск бота
+        asyncio.run(local_startup(bot))
+    else:
 
-    webhook_requests_handler = SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-    )
-    # Register webhook handler on application
-    webhook_requests_handler.register(app, path=WEBHOOK_PATH)
+        dp.startup.register(on_startup)
 
-    # Mount dispatcher startup and shutdown hooks to aiohttp application
-    setup_application(app, dp, bot=bot)
+        app = web.Application()
+        app.router.add_post(PAYMENT_WEBHOOK_PATH, payment_webhook_handler)
 
-    # Generate SSL context
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-    context.load_cert_chain(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV)
+        webhook_requests_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot,
+        )
+        # Register webhook handler on application
+        webhook_requests_handler.register(app, path=WEBHOOK_PATH)
 
-    # And finally start webserver
-    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
+        # Mount dispatcher startup and shutdown hooks to aiohttp application
+        setup_application(app, dp, bot=bot)
+
+        # Generate SSL context
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.load_cert_chain(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV)
+
+        # And finally start webserver
+        web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
