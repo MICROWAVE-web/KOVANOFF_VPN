@@ -19,6 +19,7 @@ from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
 
 from keyboards import *
+from .manager import *
 
 API_TOKEN = config('API_TOKEN')
 
@@ -46,8 +47,6 @@ mode = config('MODE')
 # Настройка конфигурации ЮKassa
 Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
-
-payments = {}
 
 
 @router.message(CommandStart())
@@ -78,11 +77,15 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
             "capture": True,
             "description": subscription['name']
         }, uuid.uuid4())
-        payments[payment.id] = {
-            'user_id': call.from_user.id,
-            'subscription': subscription,
-            'timestamp': datetime.now()
-        }
+
+        add_payment(
+            payment.id,
+            {
+                'user_id': call.from_user.id,
+                'subscription': call.data,
+            }
+        )
+
         await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
                                                                                         payment.confirmation.confirmation_url))
     else:
@@ -122,17 +125,52 @@ async def payment_webhook_handler(request):
         data = await request.json()
         print(data)
         notification = WebhookNotification(data)
-        print(notification)
         if notification.event == 'payment.succeeded':
             logging.info(f"Payment succeeded for payment id: {notification.object.id}")
+
+            payment = get_payment(notification.object.id)
+            user_id = payment['user_id']
+            user_data = get_user(user_id)
+
+            if user_data is None:
+                add_user(user_id, {
+                    'subscriptions': [
+                        {
+                            'payment_id': notification.object.id,
+                            'subscription': payment['subscription']
+                        }
+                    ],
+                    'last_refund': None
+                })
+            else:
+                user_data['subscriptions'].append(
+                    {
+                        'payment_id': notification.object.id,
+                        'subscription': payment['subscription']
+                    }
+                )
+                save_user(user_id, user_data)
+
+            remove_payment(notification.object.id)
+
             return web.Response(status=200)
 
         elif notification.event == 'payment.canceled':
             logging.info(f"Payment canceled for payment id: {notification.object.id}")
+
+            payment = get_payment(notification.object.id)
+            # Уведомить об отклонении платежа
+            remove_payment(notification.object.id)
+
             return web.Response(status=200)
 
         elif notification.event == 'refund.succeeded':
             logging.info(f"Refund succeeded for payment id: {notification.object.id}")
+
+            payment = get_payment(notification.object.id)
+            # Уведомить об успешном возврате
+            remove_payment(notification.object.id)
+
             return web.Response(status=200)
 
         else:

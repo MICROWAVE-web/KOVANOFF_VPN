@@ -3,10 +3,16 @@ import os
 
 # Путь к файлу JSON
 DATA_FILE = 'users.json'
+PAYMENTS_FILE = 'payments.json'
 
 # Инициализация JSON-файла, если он не существует
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as file:
+        json.dump({}, file)
+
+# Инициализация JSON-файла, если он не существует
+if not os.path.exists(PAYMENTS_FILE):
+    with open(PAYMENTS_FILE, 'w') as file:
         json.dump({}, file)
 
 
@@ -16,13 +22,15 @@ def load_users():
 
 
 def save_user(user_id, user_data):
-    data = load_users()
-    data[user_id] = user_data
+    user_id = str(user_id)
+    users = load_users()
+    users[user_id] = user_data
     with open(DATA_FILE, 'w') as file:
-        json.dump(data, file, indent=4, ensure_ascii=False)
+        json.dump(users, file, indent=4, ensure_ascii=False)
 
 
 def add_user(user_id, user_data):
+    user_id = str(user_id)
     users = load_users()
     if user_id not in users.keys():
         save_user(user_id, user_data)
@@ -34,12 +42,46 @@ def add_user(user_id, user_data):
 
 
 def get_user(user_id):
+    user_id = str(user_id)
     users = load_users()
     return users.get(user_id)
 
 
+def load_payments():
+    with open(PAYMENTS_FILE, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+
+def get_payment(payment_id):
+    payment_id = str(payment_id)
+    payments = load_payments()
+    return payments.get(payment_id)
+
+
+def add_payment(payment_id, payment_data):
+    payment_id = str(payment_id)
+    payments = load_payments()
+    print(payments.keys())
+    if payment_id not in payments.keys():
+        payments[payment_id] = payment_data
+        with open(PAYMENTS_FILE, 'w') as file:
+            json.dump(payments, file, indent=4, ensure_ascii=False)
+        print(f'Пользователь {payment_id} добавлен.')
+        return True
+    else:
+        print(f'Пользователь {payment_id} уже существует.')
+        return False
+
+
+def remove_payment(payment_id):
+    payment_id = str(payment_id)
+    payments = load_payments()
+    del payments[payment_id]
+    with open(PAYMENTS_FILE, 'w') as file:
+        json.dump(payments, file, indent=4, ensure_ascii=False)
+
+
 # Пример использования
 if __name__ == "__main__":
-    add_user('123456', 'month', '2024-10-31')
-    print(get_user('123456'))
-    print(get_user('1234567'))
+    add_payment(1, {1: 2})
+    remove_payment(1)
