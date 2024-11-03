@@ -19,7 +19,7 @@ from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
 
 from keyboards import *
-from .manager import *
+from manager import *
 
 API_TOKEN = config('API_TOKEN')
 
