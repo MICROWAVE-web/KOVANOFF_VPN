@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import ssl
 import sys
@@ -13,7 +14,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputFile, BufferedInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from decouple import config
@@ -178,11 +179,14 @@ async def payment_webhook_handler(request):
             remove_payment(notification.object.id)
 
             img = qrcode.make(config_url)
+            byte_arr = io.BytesIO()
+            img.save(byte_arr, format='PNG')
+            byte_arr.seek(0)
             print(img)
             print(dir(img))
             # TODO Выслать qr код
 
-            await bot.send_photo(user_id, photo=img.get_image(), caption=get_success_pay_message(config_url),
+            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr, filename="qrcode.png"), caption=get_success_pay_message(config_url),
                                    reply_markup=get_success_pay_keyboard())
 
             return web.Response(status=200)
