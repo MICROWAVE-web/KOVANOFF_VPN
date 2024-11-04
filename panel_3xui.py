@@ -76,6 +76,7 @@ def get_client_url(api, name):
 
 
 if __name__ == "__main__":
+    panel_uuid = uuid.uuid4()
     api = login()
-    add_client(api, 'test', 2, datetime.timedelta(hours=1))
-    get_client_url(api, 'test')
+    add_client(api, panel_uuid, 2, datetime.timedelta(hours=1))
+    get_client_url(api, panel_uuid)

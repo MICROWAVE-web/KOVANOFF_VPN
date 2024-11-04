@@ -144,7 +144,8 @@ async def payment_webhook_handler(request):
 
             api = login()
             user_delta = subscriptions[payment['subscription']]['period']
-            add_client(api, panel_uuid, 2, user_delta)
+            devices_count = subscriptions[payment['subscription']]['devices']
+            add_client(api, panel_uuid, devices_count, user_delta)
             config_url = get_client_url(api, panel_uuid)
 
             if user_data is None:
