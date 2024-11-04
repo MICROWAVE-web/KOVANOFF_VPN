@@ -41,10 +41,21 @@ def add_user(user_id, user_data):
         return False
 
 
-def get_user(user_id):
+def get_user_data(user_id):
     user_id = str(user_id)
     users = load_users()
     return users.get(user_id)
+
+
+def get_user_payments(user_id):
+    user_id = str(user_id)
+    user_data = get_user_data(user_id)
+    payments = []
+    if user_data:
+        for sub in user_data['subscriptions']:
+            payments.append(sub['payment_id'])
+        return payments
+    return None
 
 
 def load_payments():

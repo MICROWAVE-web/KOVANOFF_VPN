@@ -134,7 +134,12 @@ async def payment_webhook_handler(request):
             payment = get_payment(notification.object.id)
 
             user_id = payment['user_id']
-            user_data = get_user(user_id)
+            payments = get_user_payments(user_id)
+
+            if payments is not None and notification.object.id in payments:
+                return web.Response(status=200)
+
+            user_data = get_user_data(user_id)
             panel_uuid = uuid.uuid4()
 
             api = login()
