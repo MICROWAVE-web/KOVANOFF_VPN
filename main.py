@@ -132,6 +132,8 @@ async def payment_webhook_handler(request):
             logging.info(f"Payment succeeded for payment id: {notification.object.id}")
 
             payment = get_payment(notification.object.id)
+            if payment is None:
+                return web.Response(status=200)
 
             user_id = payment['user_id']
             payments = get_user_payments(user_id)
