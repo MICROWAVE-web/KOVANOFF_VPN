@@ -77,3 +77,20 @@ def get_pay_message():
 def get_pay_keyboard(amount, url):
     button1 = types.InlineKeyboardButton(text=f"Оплатить {amount}₽", url=url)
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+
+
+# Успешная оплата
+
+def get_success_pay_message(config_url):
+    return f"""
+✅ Супер! Вот ваши данные для VPN подключения: 🌐
+
+{config_url}"""
+
+
+def get_success_pay_keyboard():
+    button1 = types.InlineKeyboardButton(text="Инструкция для IOS", callback_data="instruction_ios")
+    button2 = types.InlineKeyboardButton(text="Инструкция для Android", callback_data="instruction_android")
+    button3 = types.InlineKeyboardButton(text="Инструкция для MacOs", callback_data="instruction_macos")
+    button4 = types.InlineKeyboardButton(text="Инструкция для Windows", callback_data="instruction_windows")
+    return InlineKeyboardMarkup(inline_keyboard=[[button1], [button2], [button3], [button4]])

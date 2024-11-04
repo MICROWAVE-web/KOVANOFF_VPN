@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import datetime, timedelta
 
+import qrcode
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -20,6 +21,7 @@ from yookassa.domain.notification import WebhookNotification
 
 from keyboards import *
 from manager import *
+from panel_3xui import login, add_client, get_client_url
 
 API_TOKEN = config('API_TOKEN')
 
@@ -38,6 +40,7 @@ WEBHOOK_SECRET = config('WEBHOOK_SECRET')
 WEBHOOK_SSL_CERT = config('WEBHOOK_SSL_CERT')
 WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 # Роутер
 router = Router()
 
@@ -129,15 +132,25 @@ async def payment_webhook_handler(request):
             logging.info(f"Payment succeeded for payment id: {notification.object.id}")
 
             payment = get_payment(notification.object.id)
+
             user_id = payment['user_id']
             user_data = get_user(user_id)
+            panel_uuid = uuid.uuid4()
+
+            api = login()
+            user_delta = subscriptions[payment['subscription']]['period']
+            add_client(api, panel_uuid, 2, user_delta)
+            config_url = get_client_url(api, panel_uuid)
 
             if user_data is None:
                 add_user(user_id, {
                     'subscriptions': [
                         {
                             'payment_id': notification.object.id,
-                            'subscription': payment['subscription']
+                            'subscription': payment['subscription'],
+                            'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
+                            'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
+                            'panel_uuid': panel_uuid
                         }
                     ],
                     'last_refund': None
@@ -146,12 +159,22 @@ async def payment_webhook_handler(request):
                 user_data['subscriptions'].append(
                     {
                         'payment_id': notification.object.id,
-                        'subscription': payment['subscription']
+                        'subscription': payment['subscription'],
+                        'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
+                        'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
+                        'panel_uuid': panel_uuid
                     }
                 )
                 save_user(user_id, user_data)
 
             remove_payment(notification.object.id)
+
+            img = qrcode.make(config_url)
+            print(img)
+            print(dir(img))
+            # TODO Выслать qr код
+
+            await bot.send_message(user_id, get_success_pay_message(), reply_markup=get_success_pay_keyboard())
 
             return web.Response(status=200)
 
@@ -160,6 +183,7 @@ async def payment_webhook_handler(request):
 
             payment = get_payment(notification.object.id)
             # Уведомить об отклонении платежа
+
             remove_payment(notification.object.id)
 
             return web.Response(status=200)
