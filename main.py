@@ -126,7 +126,6 @@ async def process_refund(message: types.Message):
 async def payment_webhook_handler(request):
     try:
         data = await request.json()
-        print(data)
         notification = WebhookNotification(data)
         if notification.event == 'payment.succeeded':
             logging.info(f"Payment succeeded for payment id: {notification.object.id}")
@@ -205,11 +204,12 @@ async def payment_webhook_handler(request):
 
 
 async def on_startup(bot: Bot) -> None:
-    await bot.set_webhook(
-        f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}",
-    )
-    time.sleep(3)
-    print(await bot.get_webhook_info())
+    webhook_url = f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}"
+    webhook_info = await bot.get_webhook_info()
+    if webhook_info.url != webhook_url:
+        await bot.set_webhook(
+            url=webhook_url,
+        )
 
 
 async def local_startup(bot: Bot) -> None:

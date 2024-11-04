@@ -66,10 +66,10 @@ def add_payment(payment_id, payment_data):
         payments[payment_id] = payment_data
         with open(PAYMENTS_FILE, 'w') as file:
             json.dump(payments, file, indent=4, ensure_ascii=False)
-        print(f'Пользователь {payment_id} добавлен.')
+        print(f'Платеж {payment_id} добавлен.')
         return True
     else:
-        print(f'Пользователь {payment_id} уже существует.')
+        print(f'Платеж {payment_id} уже существует.')
         return False
 
 
