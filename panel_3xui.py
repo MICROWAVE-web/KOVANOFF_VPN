@@ -70,9 +70,7 @@ def delete_client(api, name):
 
 def get_client_url(api, name):
     inbound, nc = get_client_and_inbound_by_email(api, name)
-    print(inbound)
     config_ufl = f"""{inbound.protocol}://{nc.id}@{get_address()}:{inbound.port}?type={inbound.stream_settings.network}&security={inbound.stream_settings.security}&pbk={inbound.stream_settings.reality_settings['settings']['publicKey']}&fp={inbound.stream_settings.reality_settings['settings']['fingerprint']}&sni={inbound.stream_settings.reality_settings['serverNames'][0]}&sid={inbound.stream_settings.reality_settings['shortIds'][0]}&flow={nc.flow}&spx=%2F#KOVANOFF-VPN"""
-    print(config_ufl)
     return config_ufl
 
 
