@@ -3,6 +3,7 @@ import logging
 import ssl
 import sys
 import time
+import traceback
 import uuid
 from datetime import datetime, timedelta
 
@@ -199,6 +200,7 @@ async def payment_webhook_handler(request):
         else:
             print('Unrecognized event type')
     except Exception as e:
+        traceback.print_exc()
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
 
