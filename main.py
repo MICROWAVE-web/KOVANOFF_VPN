@@ -140,7 +140,7 @@ async def payment_webhook_handler(request):
                 return web.Response(status=200)
 
             user_data = get_user_data(user_id)
-            panel_uuid = uuid.uuid4()
+            panel_uuid = str(uuid.uuid4())
 
             api = login()
             user_delta = subscriptions[payment['subscription']]['period']

@@ -37,6 +37,7 @@ def get_client_and_inbound_by_email(api, name):
     inbounds = get_inbounds(api)
     for inbound in inbounds:
         for user in inbound.settings.clients:
+            print(name, user.email, name == user.email)
             if name == user.email:
                 return inbound, user
 
@@ -76,7 +77,8 @@ def get_client_url(api, name):
 
 
 if __name__ == "__main__":
-    panel_uuid = uuid.uuid4()
+    panel_uuid = str(uuid.uuid4())
+    print(panel_uuid)
     api = login()
     add_client(api, panel_uuid, 2, datetime.timedelta(hours=1))
     get_client_url(api, panel_uuid)
