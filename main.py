@@ -186,7 +186,7 @@ async def payment_webhook_handler(request):
             print(dir(img))
             # TODO Выслать qr код
 
-            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr, filename="qrcode.png"), caption=get_success_pay_message(config_url),
+            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"), caption=get_success_pay_message(config_url),
                                    reply_markup=get_success_pay_keyboard())
 
             return web.Response(status=200)
