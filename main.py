@@ -14,9 +14,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InputFile, BufferedInputFile
+from aiogram.types import CallbackQuery, BufferedInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from celery import Celery
 from decouple import config
 from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
@@ -53,10 +54,32 @@ mode = config('MODE')
 Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
 
+# Инициализация Celery
+app = Celery('tasks', broker='amqp://localhost')
+
+
+@app.task
+def send_message(user_id, text):
+    async def _send_message():
+        await bot.send_message(user_id, text)
+
+    from asyncio import run
+    run(_send_message())
+
+
+async def schedule_message(user_id, text, delay):
+    send_message.apply_async((user_id, text), countdown=delay)
+
 
 @router.message(CommandStart())
 async def send_welcome(message: types.Message):
     await message.reply(get_welcome_message(), reply_markup=get_welcome_keyboard())
+
+
+@router.message(Command('delay'))
+async def test_send_message(message: types.Message):
+    await schedule_message(message.from_user.id, 'NIGA!', 30)
+    await message.reply("Сообщение будет отправлено через 30 секунд.")
 
 
 @router.callback_query(F.data == 'get_sub')
@@ -204,7 +227,8 @@ async def payment_webhook_handler(request):
 
             sub = payment['subscription']
             sub_name = subscriptions[sub]['name']
-            await bot.send_message(user_id, get_canceled_pay_message(), reply_markup=get_canceled_pay_keyboard(sub_name, sub))
+            await bot.send_message(user_id, get_canceled_pay_message(),
+                                   reply_markup=get_canceled_pay_keyboard(sub_name, sub))
 
             remove_payment(notification.object.id)
 
