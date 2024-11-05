@@ -120,26 +120,25 @@ def get_empty_subscriptions_message():
 def get_actual_subscriptions_message(active_subs, inactive_subs):
     active_subs_text = ""
     for sub in active_subs:
-        active_subs_text += f"""
-{subscriptions[sub['subscription']]['name']}        
-{sub['datetime_operation']}
-{sub['datetime_expire']}
+        active_subs_text += f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
+От: {sub['datetime_operation']}
+До: {sub['datetime_expire']}</blockquote>
 """
+
 
     inactive_subs_text = ""
     for sub in inactive_subs:
-        inactive_subs_text += f"""
-{subscriptions[sub['subscription']]['name']}        
+        inactive_subs_text += f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
 {sub['datetime_operation']}
-{sub['datetime_expire']}
+{sub['datetime_expire']}</blockquote>
 """
 
     return f"""
 📋 Вот список всех ваших VPN подписок: 🌐
 
 🟢 Активные подписки:
-<blockquote>{active_subs_text}</blockquote>
+{active_subs_text}
 
 🔴 Истёкшие подписки:
-<blockquote>{inactive_subs_text}</blockquote>
+{inactive_subs_text}
 """
