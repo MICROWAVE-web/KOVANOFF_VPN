@@ -182,12 +182,10 @@ async def payment_webhook_handler(request):
             byte_arr = io.BytesIO()
             img.save(byte_arr, format='PNG')
             byte_arr.seek(0)
-            print(img)
-            print(dir(img))
-            # TODO Выслать qr код
 
-            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"), caption=get_success_pay_message(config_url),
-                                   reply_markup=get_success_pay_keyboard())
+            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                                 caption=get_success_pay_message(config_url),
+                                 reply_markup=get_success_pay_keyboard())
 
             return web.Response(status=200)
 
@@ -195,7 +193,18 @@ async def payment_webhook_handler(request):
             logging.info(f"Payment canceled for payment id: {notification.object.id}")
 
             payment = get_payment(notification.object.id)
-            # Уведомить об отклонении платежа
+            if payment is None:
+                return web.Response(status=200)
+
+            user_id = payment['user_id']
+            payments = get_user_payments(user_id)
+
+            if payments is not None and notification.object.id in payments:
+                return web.Response(status=200)
+
+            sub = payment['subscription']
+            sub_name = subscriptions[sub]['name']
+            await bot.send_message(user_id, get_canceled_pay_message(), reply_markup=get_canceled_pay_keyboard(sub_name, sub))
 
             remove_payment(notification.object.id)
 

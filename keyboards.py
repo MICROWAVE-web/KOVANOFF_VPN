@@ -85,7 +85,7 @@ def get_success_pay_message(config_url):
     return f"""
 ✅ Супер! Вот ваши данные для VPN подключения: 🌐
 
-{config_url}"""
+<blockquote>{config_url}</blockquote>"""
 
 
 def get_success_pay_keyboard():
@@ -94,3 +94,16 @@ def get_success_pay_keyboard():
     button3 = types.InlineKeyboardButton(text="Инструкция для MacOs", callback_data="instruction_macos")
     button4 = types.InlineKeyboardButton(text="Инструкция для Windows", callback_data="instruction_windows")
     return InlineKeyboardMarkup(inline_keyboard=[[button1], [button2], [button3], [button4]])
+
+
+# Отмена оплаты
+
+def get_canceled_pay_message():
+    return f"""
+❌ Упс! оплата не прошла, попробуйте снова:
+"""
+
+
+def get_canceled_pay_keyboard(again_text, again_callback):
+    button1 = types.InlineKeyboardButton(text=again_text, callback_data=again_callback)
+    return InlineKeyboardMarkup(inline_keyboard=[[button1]])
