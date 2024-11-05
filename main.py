@@ -265,8 +265,9 @@ async def local_startup(bot: Bot) -> None:
     time.sleep(3)
     await dp.start_polling(bot)
 
-
+print(123)
 if __name__ == '__main__':
+    print(123444)
     # Настройка логирования
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
