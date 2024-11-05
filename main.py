@@ -22,6 +22,8 @@ from decouple import config
 from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
 
+import celery_worker
+from celery_worker import app
 from keyboards import *
 from manager import *
 from panel_3xui import login, add_client, get_client_url
@@ -54,22 +56,6 @@ mode = config('MODE')
 Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
 
-# Инициализация Celery
-app = Celery('tasks', broker='redis://localhost:6379/0')
-app.conf.broker_connection_retry_on_startup = True
-
-@app.task
-def send_message(user_id, text):
-    async def _send_message():
-        await bot.send_message(user_id, text)
-
-    from asyncio import run
-    run(_send_message())
-
-
-async def schedule_message(user_id, text, delay):
-    send_message.apply_async((user_id, text), countdown=delay)
-
 
 @router.message(CommandStart())
 async def send_welcome(message: types.Message):
@@ -78,7 +64,7 @@ async def send_welcome(message: types.Message):
 
 @router.message(Command('delay'))
 async def test_send_message(message: types.Message):
-    await schedule_message(message.from_user.id, 'NIGA!', 30)
+    celery_worker.send_message.apply_async((message.from_user.id, 'NIGA!'), countdown=30),
     await message.reply("Сообщение будет отправлено через 30 секунд.")
 
 
@@ -265,9 +251,7 @@ async def local_startup(bot: Bot) -> None:
     time.sleep(3)
     await dp.start_polling(bot)
 
-print(123)
 if __name__ == '__main__':
-    print(123444)
     # Настройка логирования
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
