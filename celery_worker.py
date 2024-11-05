@@ -28,12 +28,3 @@ async def send_message(user_id, text): await bot.send_message(user_id, text)
 def send_message(user_id, text):
     asyncio.run(send_message(user_id, text))
 
-
-@app.task
-def cancel_payment(payment_id):
-    try:
-        print(f"Запрос на отмену транзакции {payment_id}")
-        result = Payment.cancel(payment_id)
-        print(result)
-    except Exception as e:
-        traceback.print_exc()

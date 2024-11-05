@@ -102,7 +102,6 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
 
         await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
                                                                                         payment.confirmation.confirmation_url))
-        celery_worker.cancel_payment.apply_async((payment.id,), countdown=60),
     else:
         await call.message.answer("Неверная команда. Напишите /start")
     await state.clear()
