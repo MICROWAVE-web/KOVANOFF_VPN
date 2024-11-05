@@ -112,7 +112,7 @@ async def my_subs(message: types.Message):
     else:
         active_subs = []
         inactive_subs = []
-        subscriptions = user_data.get(['subscriptions'])
+        subscriptions = user_data.get('subscriptions')
         for sub in subscriptions:
             status = sub.get('active')
             if status is True:
