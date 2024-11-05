@@ -56,7 +56,7 @@ Configuration.secret_key = YOOKASSA_SECRET_KEY
 
 # Инициализация Celery
 app = Celery('tasks', broker='redis://localhost:6379/0')
-
+app.conf.broker_connection_retry_on_startup = True
 
 @app.task
 def send_message(user_id, text):
