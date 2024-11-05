@@ -55,7 +55,7 @@ Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
 
 # Инициализация Celery
-app = Celery('tasks', broker='amqp://localhost')
+app = Celery('tasks', broker='redis://localhost:6379/0')
 
 
 @app.task
