@@ -62,10 +62,10 @@ async def send_welcome(message: types.Message):
     await message.reply(get_welcome_message(), reply_markup=get_welcome_keyboard())
 
 
-@router.message(Command('delay'))
+'''@router.message(Command('delay'))
 async def test_send_message(message: types.Message):
     celery_worker.send_message.apply_async((message.from_user.id, 'NIGA!'), countdown=30),
-    await message.reply("Сообщение будет отправлено через 30 секунд.")
+    await message.reply("Сообщение будет отправлено через 30 секунд.")'''
 
 
 @router.callback_query(F.data == 'get_sub')

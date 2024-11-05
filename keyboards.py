@@ -107,3 +107,4 @@ def get_canceled_pay_message():
 def get_canceled_pay_keyboard(again_text, again_callback):
     button1 = types.InlineKeyboardButton(text=again_text, callback_data=again_callback)
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+
