@@ -17,13 +17,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, BufferedInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
-from celery import Celery
 from decouple import config
 from yookassa import Payment, Refund, Configuration
 from yookassa.domain.notification import WebhookNotification
 
-import celery_worker
-from celery_worker import app
 from keyboards import *
 from manager import *
 from panel_3xui import login, add_client, get_client_url
@@ -45,7 +42,7 @@ WEBHOOK_SECRET = config('WEBHOOK_SECRET')
 WEBHOOK_SSL_CERT = config('WEBHOOK_SSL_CERT')
 WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 # Роутер
 router = Router()
 
@@ -109,7 +106,20 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
 
 @router.message(Command('my_subs'))
 async def my_subs(message: types.Message):
-    pass
+    user_data = get_user_data(message.from_user.id)
+    if user_data is None:
+        await message.answer(text=get_empty_subscriptions_message())
+    else:
+        active_subs = []
+        inactive_subs = []
+        subscriptions = user_data.get(['subscriptions'])
+        for sub in subscriptions:
+            status = sub.get('active')
+            if status is True:
+                active_subs.append(sub)
+            else:
+                inactive_subs.append(sub)
+        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs))
 
 
 @router.message(Command('refund'))
@@ -168,7 +178,8 @@ async def payment_webhook_handler(request):
                             'subscription': payment['subscription'],
                             'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
                             'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
-                            'panel_uuid': panel_uuid
+                            'panel_uuid': panel_uuid,
+                            'active': True
                         }
                     ],
                     'last_refund': None
@@ -180,7 +191,8 @@ async def payment_webhook_handler(request):
                         'subscription': payment['subscription'],
                         'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
                         'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
-                        'panel_uuid': panel_uuid
+                        'panel_uuid': panel_uuid,
+                        'active': True
                     }
                 )
                 save_user(user_id, user_data)
@@ -250,6 +262,7 @@ async def local_startup(bot: Bot) -> None:
     await bot.delete_webhook()
     time.sleep(3)
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     # Настройка логирования

@@ -108,3 +108,38 @@ def get_canceled_pay_keyboard(again_text, again_callback):
     button1 = types.InlineKeyboardButton(text=again_text, callback_data=again_callback)
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
 
+
+# Список подписок
+
+def get_empty_subscriptions_message():
+    return f"""
+❌ У вас нет подписок 🥺
+"""
+
+
+def get_actual_subscriptions_message(active_subs, inactive_subs):
+    active_subs_text = ""
+    for sub in active_subs:
+        active_subs_text += f"""
+{subscriptions[sub['subscription']]['name']}        
+{sub['datetime_operation']}
+{sub['datetime_expire']}
+"""
+
+    inactive_subs_text = ""
+    for sub in inactive_subs:
+        inactive_subs_text += f"""
+{subscriptions[sub['subscription']]['name']}        
+{sub['datetime_operation']}
+{sub['datetime_expire']}
+"""
+
+    return f"""
+📋 Вот список всех ваших VPN подписок: 🌐
+
+🟢 Активные подписки:
+<blockquote>{active_subs_text}</blockquote>
+
+🔴 Истёкшие подписки:
+<blockquote>{inactive_subs_text}</blockquote>
+"""
