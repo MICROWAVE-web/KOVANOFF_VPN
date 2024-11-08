@@ -115,7 +115,7 @@ class ThrottleManager:
         else:
             data["EXCEEDED_COUNT"] = 1
 
-        await self.redis.hmset(bucket_name, data)
+        await self.redis.hset(bucket_name, mapping=data)
 
         if not result:
             raise Throttled(key=key, chat=chat_id, user=user_id, **data)
