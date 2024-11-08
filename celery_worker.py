@@ -26,8 +26,15 @@ app = Celery('tasks', broker='redis://localhost:6379/0')
 app.conf.broker_connection_retry_on_startup = True
 bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
+ADMINS = config('ADMINS').split(',')
+
 # Логгирвание
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+
+def wakeup_admins(message):
+    for admin in ADMINS:
+        bot.send_message(chat_id=admin, text=message)
 
 
 async def send_message(user_id, text): await bot.send_message(user_id, text)
@@ -35,16 +42,29 @@ async def send_message(user_id, text): await bot.send_message(user_id, text)
 
 @app.task
 def send_message(user_id, text):
+    """
+
+    :param user_id:
+    :param text:
+    :return:
+    """
     asyncio.run(send_message(user_id, text))
 
 
 @app.task
 def cancel_subscribtion(user_id, panel_uuid):
+    """
+
+    :param user_id:
+    :param panel_uuid:
+    :return:
+    """
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()
         delete_client(api, panel_uuid)
     except Exception as e:
+        wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
         traceback.print_exc()
     try:
         user_data = get_user_data(user_id)
@@ -54,9 +74,8 @@ def cancel_subscribtion(user_id, panel_uuid):
                 break
         save_user(user_id, user_data)
     except Exception as e:
+        wakeup_admins(f"Ошибка при деактивации подписки клиента {panel_uuid=} {user_id=}")
         traceback.print_exc()
-
-    # TODO: При ошибке уведомить администратора
 
     async def _snd_prompt(usr_id):
         await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
@@ -66,6 +85,14 @@ def cancel_subscribtion(user_id, panel_uuid):
 
 @app.task
 def remind_subscribtion(user_id, days_before_expire, panel_uuid):
+    """
+
+    :param user_id:
+    :param days_before_expire:
+    :param panel_uuid:
+    :return:
+    """
+
     async def _snd_prompt(usr_id, days_before_expr, pnl_uuid):
         await bot.send_message(usr_id, text=get_remind_message(days_before_expr),
                                reply_markup=get_continue_keyboard(pnl_uuid))

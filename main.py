@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 import pytz
 import qrcode
+import redis
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -26,12 +27,19 @@ import celery_worker
 from keyboards import *
 from manager import *
 from panel_3xui import login, add_client, get_client_url, continue_client
+from throttle_middleware import ThrottlingMiddleware
 
+# Токер телеграмм
 API_TOKEN = config('API_TOKEN')
 
+# Id администраторов
+ADMINS = config('ADMINS').split(',')
+
+# Юкасса
 YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
 YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
 
+# Настройка webhook
 BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}:443'
 WEBHOOK_PATH = '/webhook'
 PAYMENT_WEBHOOK_PATH = '/payment-webhook'
@@ -44,6 +52,7 @@ WEBHOOK_SECRET = config('WEBHOOK_SECRET')
 WEBHOOK_SSL_CERT = config('WEBHOOK_SSL_CERT')
 WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 
+# Формат времени
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
 # defining the timezone
@@ -58,6 +67,16 @@ mode = config('MODE')
 # Настройка конфигурации ЮKassa
 Configuration.account_id = YOOKASSA_SHOP_ID
 Configuration.secret_key = YOOKASSA_SECRET_KEY
+
+
+def wakeup_admins(message):
+    for admin in ADMINS:
+        bot.send_message(chat_id=admin, text=message)
+
+
+async def anti_flood(*args, **kwargs):
+    m = args[0]
+    await m.answer("Не флуди 🥰")
 
 
 @router.message(CommandStart())
@@ -97,11 +116,25 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
     :param panel_uuid:
     :return:
     """
-    user_data = get_user_data(user_id)
-    if user_data is None:
-        add_user(user_id, {
-            'try_period': True if try_period else False,
-            'subscriptions': [
+    try:
+        user_data = get_user_data(user_id)
+        if user_data is None:
+            add_user(user_id, {
+                'try_period': True if try_period else False,
+                'subscriptions': [
+                    {
+                        'payment_id': notification.object.id if try_period is False else '-',
+                        'subscription': payment['subscription'] if try_period is False else 'try_period',
+                        'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
+                        'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
+                        'panel_uuid': panel_uuid,
+                        'active': True
+                    }
+                ],
+            })
+        else:
+            user_data['try_period'] = True if try_period else False
+            user_data['subscriptions'].append(
                 {
                     'payment_id': notification.object.id if try_period is False else '-',
                     'subscription': payment['subscription'] if try_period is False else 'try_period',
@@ -110,137 +143,162 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
                     'panel_uuid': panel_uuid,
                     'active': True
                 }
-            ],
-        })
-    else:
-        user_data['try_period'] = True if try_period else False
-        user_data['subscriptions'].append(
-            {
-                'payment_id': notification.object.id if try_period is False else '-',
-                'subscription': payment['subscription'] if try_period is False else 'try_period',
-                'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
-                'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
-                'panel_uuid': panel_uuid,
-                'active': True
-            }
-        )
-        save_user(user_id, user_data)
+            )
+            save_user(user_id, user_data)
+    except Exception:
+        wakeup_admins(f"Ошибка сохранения подписки (файл users.json) {user_id=} {panel_uuid=}")
+        traceback.print_exc()
 
 
 @router.callback_query(F.data == "try_period")
 async def process_try_period(call: CallbackQuery, state: FSMContext):
-    user_id = call.from_user.id
-    user_data = get_user_data(user_id)
-    if user_data is not None and user_data.get("try_period") is not None and user_data["try_period"] is True:
-        await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard())
-    else:
+    """
+    :param call:
+    :param state:
+    :return:
+    """
+    try:
+        user_id = call.from_user.id
+        user_data = get_user_data(user_id)
+        if user_data is not None and user_data.get("try_period") is not None and user_data["try_period"] is True:
+            await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard())
+        else:
 
-        # Добавляем в 3x-ui
-        api = login()
-        user_delta = subscriptions['try_period']['period']
-        devices_count = subscriptions['try_period']['devices']
-        panel_uuid = str(uuid.uuid4())
-        logging.info(f"User (id: {panel_uuid}) was created.")
-        add_client(api, panel_uuid, devices_count, user_delta)
-        config_url = get_client_url(api, panel_uuid)
+            # Добавляем в 3x-ui
+            api = login()
+            user_delta = subscriptions['try_period']['period']
+            devices_count = subscriptions['try_period']['devices']
+            panel_uuid = str(uuid.uuid4())
+            logging.info(f"User (id: {panel_uuid}) was created.")
+            add_client(api, panel_uuid, devices_count, user_delta)
+            config_url = get_client_url(api, panel_uuid)
 
-        datetime_expire = datetime.now(tz) + user_delta
+            datetime_expire = datetime.now(tz) + user_delta
 
-        # Записываем в users.json
-        save_subscription(user_id, None, None, datetime_expire, panel_uuid, try_period=True)
+            # Записываем в users.json
+            save_subscription(user_id, None, None, datetime_expire, panel_uuid, try_period=True)
 
-        # Отключаем подписку, через user_delta
-        celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
+            # Отключаем подписку, через user_delta
+            celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
-        byte_arr = get_qr_code(config_url)
-        # Высылаем данные пользователю
-        await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
-                             caption=get_success_pay_message(config_url),
-                             reply_markup=get_success_pay_keyboard())
-    await state.clear()
+            byte_arr = get_qr_code(config_url)
+            # Высылаем данные пользователю
+            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                                 caption=get_success_pay_message(config_url),
+                                 reply_markup=get_success_pay_keyboard())
+        await state.clear()
+    except Exception:
+        wakeup_admins(f"Ошибка cоздания триальной подписки {call.from_user.id=}")
+        traceback.print_exc()
 
 
 @router.callback_query(F.data.startswith("continue_"))
 async def continue_subscribe(call: CallbackQuery, state: FSMContext):
-    panel_uuid = call.data[9:45]
-    subscription = subscriptions.get(call.data[45:])
-    user_id = call.from_user.id
-    user_data = get_user_data(user_id)
-    if user_data is not None and user_data.get('subscriptions') is not None:
-        for sub in user_data['subscriptions']:
-            if sub['panel_uuid'] == panel_uuid and sub['active'] is False:
-                await bot.send_message(user_id, text=get_continue_cancell_message(), reply_markup=get_cancel_keyboard())
-                return
+    """
 
-    if subscription:
-        payment = Payment.create({
-            "amount": {
-                "value": str(subscription['price']),
-                "currency": "RUB"
-            },
-            "confirmation": {
-                "type": "redirect",
-                "return_url": "https://t.me/kovanoff_vpn_bot"
-            },
-            "capture": True,
-            "description": subscription['name']
-        }, uuid.uuid4())
+    :param call:
+    :param state:
+    :return:
+    """
+    try:
+        panel_uuid = call.data[9:45]
+        subscription = subscriptions.get(call.data[45:])
+        user_id = call.from_user.id
+        user_data = get_user_data(user_id)
+        if user_data is not None and user_data.get('subscriptions') is not None:
+            for sub in user_data['subscriptions']:
+                if sub['panel_uuid'] == panel_uuid and sub['active'] is False:
+                    await bot.send_message(user_id, text=get_continue_cancell_message(),
+                                           reply_markup=get_cancel_keyboard())
+                    return
 
-        add_payment(
-            payment.id,
-            {
-                'user_id': call.from_user.id,
-                'subscription': call.data,
-                'creation': False,
-                'continuation': True,
-                'panel_uuid': panel_uuid
-            }
-        )
+        if subscription:
+            payment = Payment.create({
+                "amount": {
+                    "value": str(subscription['price']),
+                    "currency": "RUB"
+                },
+                "confirmation": {
+                    "type": "redirect",
+                    "return_url": "https://t.me/kovanoff_vpn_bot"
+                },
+                "capture": True,
+                "description": subscription['name']
+            }, uuid.uuid4())
 
-        await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
-                                                                                        payment.confirmation.confirmation_url))
-    else:
-        await call.message.answer("Неверная команда. Напишите /start")
-    await state.clear()
+            add_payment(
+                payment.id,
+                {
+                    'user_id': call.from_user.id,
+                    'subscription': call.data,
+                    'creation': False,
+                    'continuation': True,
+                    'panel_uuid': panel_uuid
+                }
+            )
+
+            await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
+                                                                                            payment.confirmation.confirmation_url))
+        else:
+            await call.message.answer("Неверная команда. Напишите /start")
+        await state.clear()
+    except Exception:
+        wakeup_admins(f"Ошибка продления подписки (платёж) {call.from_user.id=}")
+        traceback.print_exc()
 
 
 @router.callback_query(F.data.startswith("month_") | F.data.startswith("year_"))
 async def process_subscribe(call: CallbackQuery, state: FSMContext):
-    subscription = subscriptions.get(call.data)
-    if subscription:
-        payment = Payment.create({
-            "amount": {
-                "value": str(subscription['price']),
-                "currency": "RUB"
-            },
-            "confirmation": {
-                "type": "redirect",
-                "return_url": "https://t.me/kovanoff_vpn_bot"
-            },
-            "capture": True,
-            "description": subscription['name']
-        }, uuid.uuid4())
+    """
 
-        add_payment(
-            payment.id,
-            {
-                'user_id': call.from_user.id,
-                'subscription': call.data,
-                'creation': True,
-                'continuation': False,
-                'panel_uuid': ''
-            }
-        )
+    :param call:
+    :param state:
+    :return:
+    """
+    try:
+        subscription = subscriptions.get(call.data)
+        if subscription:
+            payment = Payment.create({
+                "amount": {
+                    "value": str(subscription['price']),
+                    "currency": "RUB"
+                },
+                "confirmation": {
+                    "type": "redirect",
+                    "return_url": "https://t.me/kovanoff_vpn_bot"
+                },
+                "capture": True,
+                "description": subscription['name']
+            }, uuid.uuid4())
 
-        await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
-                                                                                        payment.confirmation.confirmation_url))
-    else:
-        await call.message.answer("Неверная команда. Напишите /start")
-    await state.clear()
+            add_payment(
+                payment.id,
+                {
+                    'user_id': call.from_user.id,
+                    'subscription': call.data,
+                    'creation': True,
+                    'continuation': False,
+                    'panel_uuid': ''
+                }
+            )
+
+            await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
+                                                                                            payment.confirmation.confirmation_url))
+        else:
+            await call.message.answer("Неверная команда. Напишите /start")
+        await state.clear()
+    except Exception:
+        wakeup_admins(f"Ошибка создания подписки (платёж) {call.from_user.id=}")
+        traceback.print_exc()
 
 
 @router.message(Command('my_subs'))
 async def my_subs(message: types.Message):
+    """
+
+    :param message:
+    :return:
+    """
     user_data = get_user_data(message.from_user.id)
     if user_data is None:
         await message.answer(text=get_empty_subscriptions_message())
@@ -260,75 +318,105 @@ async def my_subs(message: types.Message):
 
 @router.callback_query(F.data.startswith("get_info_"))
 async def get_info(call: CallbackQuery, state: FSMContext):
-    panel_uuid = call.data[9:]
-    user_id = call.from_user.id
-    user_data = get_user_data(user_id)
-    if user_data is not None and user_data.get('subscriptions') is not None:
-        for sub in user_data['subscriptions']:
-            if sub['panel_uuid'] == panel_uuid:
-                api = login()
-                config_url = get_client_url(api, panel_uuid)
-                byte_arr = get_qr_code(config_url)
-                # Высылаем данные пользователю
-                await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
-                                     caption=get_success_pay_message(config_url),
-                                     reply_markup=get_success_pay_keyboard())
+    """
+
+    :param call:
+    :param state:
+    :return:
+    """
+    try:
+        panel_uuid = call.data[9:]
+        user_id = call.from_user.id
+        user_data = get_user_data(user_id)
+        if user_data is not None and user_data.get('subscriptions') is not None:
+            for sub in user_data['subscriptions']:
+                if sub['panel_uuid'] == panel_uuid:
+                    api = login()
+                    config_url = get_client_url(api, panel_uuid)
+                    byte_arr = get_qr_code(config_url)
+                    # Высылаем данные пользователю
+                    await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                                         caption=get_success_pay_message(config_url),
+                                         reply_markup=get_success_pay_keyboard())
+    except Exception:
+        wakeup_admins(f"Ошибка отправки данных пользователю panel_uuid={call.data[9:]} {call.from_user.id=}")
+        traceback.print_exc()
 
 
 async def create_new_client(user_id, payment, notification):
-    panel_uuid = str(uuid.uuid4())
+    """
 
-    # Добавляем в 3x-ui
-    api = login()
-    user_delta = subscriptions[payment['subscription']]['period']
-    devices_count = subscriptions[payment['subscription']]['devices']
-    logging.info(f"User (id: {panel_uuid}) was created.")
-    add_client(api, panel_uuid, devices_count, user_delta)
+    :param user_id:
+    :param payment:
+    :param notification:
+    :return:
+    """
+    try:
+        panel_uuid = str(uuid.uuid4())
 
-    config_url = get_client_url(api, panel_uuid)
+        # Добавляем в 3x-ui
+        api = login()
+        user_delta = subscriptions[payment['subscription']]['period']
+        devices_count = subscriptions[payment['subscription']]['devices']
+        logging.info(f"User (id: {panel_uuid}) was created.")
+        add_client(api, panel_uuid, devices_count, user_delta)
 
-    # Вычисляем времена
-    datetime_expire = datetime.now(tz) + user_delta
-    days_before_expire = 4
-    datetime_remind = datetime_expire - timedelta(days=days_before_expire)
+        config_url = get_client_url(api, panel_uuid)
 
-    # Записываем в users.json
-    save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
+        # Вычисляем времена
+        datetime_expire = datetime.now(tz) + user_delta
+        days_before_expire = 4
+        datetime_remind = datetime_expire - timedelta(days=days_before_expire)
 
-    remove_payment(notification.object.id)
+        # Записываем в users.json
+        save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
 
-    # Отключаем подписку, через user_delta
-    celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
+        remove_payment(notification.object.id)
 
-    # Создаём напоминание
-    celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire, panel_uuid), eta=datetime_remind)
+        # Отключаем подписку, через user_delta
+        celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
-    byte_arr = get_qr_code(config_url)
-    # Высылаем данные пользователю
-    await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
-                         caption=get_success_pay_message(config_url),
-                         reply_markup=get_success_pay_keyboard())
+        # Создаём напоминание
+        celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire, panel_uuid), eta=datetime_remind)
+
+        byte_arr = get_qr_code(config_url)
+        # Высылаем данные пользователю
+        await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                             caption=get_success_pay_message(config_url),
+                             reply_markup=get_success_pay_keyboard())
+    except Exception as e:
+        wakeup_admins(f"Ошибка при создании клиента {user_id=} {notification.object.id=}")
+        traceback.print_exc()
 
 
 async def conti_client(user_id, payment, notification):
-    user_data = get_user_data(user_id)
-    panel_uuid = payment['panel_uuid']
-    for sub in user_data['subscriptions']:
-        if sub['panel_uuid'] == panel_uuid:
-            user_sub = sub['subscription']
-            new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + \
-                                  subscriptions[user_sub]['period']
+    """
 
-            api = login()
-            continue_client(api, panel_uuid, new_datetime_expire)
-            sub['payment_id'] = notification.object.id
-            sub['datetime_expire'] = new_datetime_expire.strftime(DATETIME_FORMAT)
-            break
-    save_user(user_id, user_data)
+    :param user_id:
+    :param payment:
+    :param notification:
+    :return:
+    """
+    try:
+        user_data = get_user_data(user_id)
+        panel_uuid = payment['panel_uuid']
+        for sub in user_data['subscriptions']:
+            if sub['panel_uuid'] == panel_uuid:
+                user_sub = sub['subscription']
+                new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + \
+                                      subscriptions[user_sub]['period']
 
-    remove_payment(notification.object.id)
+                api = login()
+                continue_client(api, panel_uuid, new_datetime_expire)
+                sub['payment_id'] = notification.object.id
+                sub['datetime_expire'] = new_datetime_expire.strftime(DATETIME_FORMAT)
+                break
+        save_user(user_id, user_data)
 
-    # TODO: При ошибке уведомить администратора
+        remove_payment(notification.object.id)
+    except Exception as e:
+        wakeup_admins(f"Ошибка продления подписки {user_id=} {notification.object.id=}")
+        traceback.print_exc()
 
 
 # Обработчик webhook для платежной системы
@@ -384,6 +472,7 @@ async def payment_webhook_handler(request):
             print('Unrecognized event type')
     except Exception as e:
         traceback.print_exc()
+        wakeup_admins(f"Ошибка обработки webhook")
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
 
@@ -409,14 +498,15 @@ if __name__ == '__main__':
 
     dp = Dispatcher()
 
-    dp.include_router(router)
-
     bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     if mode == "local":
+        dp.include_router(router)
         # Локальный запуск бота
         asyncio.run(local_startup(bot))
     else:
+        router.message.middleware(ThrottlingMiddleware(redis.Redis(host='localhost', port=6379, db=1)))
+        dp.include_router(router)
 
         dp.startup.register(on_startup)
 
@@ -442,5 +532,4 @@ if __name__ == '__main__':
 
 # TODO: Антиспам
 # TODO: Инструкции
-# TODO: Коллбеки на случай ошибки
 # TODO: рефералка
