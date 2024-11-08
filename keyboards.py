@@ -142,12 +142,14 @@ def get_actual_subscriptions_message(active_subs, inactive_subs):
 
 🔴 Истёкшие подписки:
 {inactive_subs_text}
+
+Получить ключ активных подписок:
 """
 
 
 def get_active_subscriptions_keyboard(active_subs):
     button_list = [
-        [types.InlineKeyboardButton(text=f"{subscriptions[sub['subscription']]['name']} До:{sub['datetime_expire']}",
+        [types.InlineKeyboardButton(text=f"{subscriptions[sub['subscription']]['name']} До: {sub['datetime_expire']}",
                                     callback_data=f"get_info_{sub['panel_uuid']}")] for sub in active_subs
     ]
     return InlineKeyboardMarkup(inline_keyboard=button_list)

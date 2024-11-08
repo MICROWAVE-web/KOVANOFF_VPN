@@ -181,7 +181,25 @@ async def my_subs(message: types.Message):
                 active_subs.append(sub)
             else:
                 inactive_subs.append(sub)
-        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs), reply_markup=get_active_subscriptions_keyboard(active_subs))
+        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs),
+                             reply_markup=get_active_subscriptions_keyboard(active_subs))
+
+
+@router.callback_query(F.data.startswith("get_info_"))
+async def get_info(call: CallbackQuery, state: FSMContext):
+    panel_uuid = call.data[9:]
+    user_id = call.from_user.id
+    user_data = get_user_data(user_id)
+    if user_data is not None and user_data.get('subscriptions') is not None:
+        for sub in user_data['subscriptions']:
+            if sub['panel_uuid'] == panel_uuid:
+                api = login()
+                config_url = get_client_url(api, panel_uuid)
+                byte_arr = get_qr_code(config_url)
+                # Высылаем данные пользователю
+                await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                                     caption=get_success_pay_message(config_url),
+                                     reply_markup=get_success_pay_keyboard())
 
 
 async def create_new_client(user_id, payment, notification):
