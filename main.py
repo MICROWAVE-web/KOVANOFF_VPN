@@ -17,6 +17,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, BufferedInputFile
+from aiogram.utils.deep_linking import create_start_link
 from aiogram.utils.payload import decode_payload
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
@@ -98,6 +99,13 @@ def referral_reward(referral):
         user_data['sale'] += 3
         save_user(user_id, user_data)
         bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
+
+
+# Создание реф. ссылок
+@router.message(Command('my_ref'))
+async def get_ref(message: types.Message):
+    link = await create_start_link(bot, str(message.from_user.id), encode=True)
+    await bot.send_message(message.from_user.id, f"🔗 Ваша реф. ссылка {link}")
 
 
 # Приветствие
