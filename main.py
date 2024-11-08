@@ -116,7 +116,7 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
         await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
                              caption=get_success_pay_message(config_url),
                              reply_markup=get_success_pay_keyboard())
-
+    state.clear()
 
 @router.callback_query(F.data.startswith("continue_"))
 async def continue_subscribe(call: CallbackQuery, state: FSMContext):
