@@ -1,11 +1,12 @@
 from __future__ import annotations
+
+import time
 from typing import *
+
+import redis
+import redis.asyncio.client
 from aiogram import BaseMiddleware
 from aiogram.types import Message
-import redis.asyncio.client
-import time
-import redis
-
 
 
 def rate_limit(limit: int, key=None):

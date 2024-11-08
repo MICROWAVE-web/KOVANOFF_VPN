@@ -14,9 +14,10 @@ import redis
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, BufferedInputFile
+from aiogram.utils.payload import decode_payload
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from decouple import config
@@ -74,18 +75,12 @@ def wakeup_admins(message):
         bot.send_message(chat_id=admin, text=message)
 
 
-@router.message(CommandStart())
-async def send_welcome(message: types.Message):
-    await message.reply(get_welcome_message(), reply_markup=get_welcome_keyboard())
-
-
-'''@router.message(Command('delay'))
-async def test_send_message(message: types.Message):
-    celery_worker.send_message.apply_async((message.from_user.id, 'NIGA!'), countdown=30),
-    await message.reply("Сообщение будет отправлено через 30 секунд.")'''
-
-
 def get_qr_code(config_url):
+    """
+
+    :param config_url:
+    :return:
+    """
     # Генерируем QR-code
     img = qrcode.make(config_url)
     byte_arr = io.BytesIO()
@@ -94,6 +89,44 @@ def get_qr_code(config_url):
     return byte_arr
 
 
+def referral_reward(referral):
+    user_id = referral
+    user_data = get_user_data(user_id)
+    if user_data['sale'] >= 15:
+        bot.send_message(user_id, get_sale_limit_message(user_data['sale']))
+    else:
+        user_data['sale'] += 3
+        save_user(user_id, user_data)
+        bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
+
+
+# Приветствие
+@router.message(CommandStart())
+async def send_welcome(message: types.Message, command: CommandObject = None):
+    user_id = message.from_user.id
+
+    referral = ""
+
+    # Проверка реферала
+    if command and command.args:
+        reference = str(decode_payload(command.args))
+        if reference != str(user_id):
+            referral = reference
+
+    user_data = get_user_data(user_id)
+    if user_data is None:
+        user_data = {
+            'subscriptions': [],
+            'referral': referral,
+            'try_period': False,
+            'sale': 0
+        }
+        save_user(user_id, user_data)
+
+    await message.reply(text=get_welcome_message(), reply_markup=get_welcome_keyboard())
+
+
+# Список доступных подписок
 @router.callback_query(F.data == 'get_sub')
 async def get_sub(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
@@ -101,6 +134,60 @@ async def get_sub(call: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
+# Вывод подписок пользователя
+@router.message(Command('my_subs'))
+async def my_subs(message: types.Message):
+    """
+
+    :param message:
+    :return:
+    """
+    user_data = get_user_data(message.from_user.id)
+    if user_data is None:
+        await message.answer(text=get_empty_subscriptions_message())
+    elif len(user_data['subscriptions']) > 0:
+        active_subs = []
+        inactive_subs = []
+        subscriptions = user_data['subscriptions']
+        for sub in subscriptions:
+            status = sub.get('active')
+            if status is True:
+                active_subs.append(sub)
+            else:
+                inactive_subs.append(sub)
+        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs),
+                             reply_markup=get_active_subscriptions_keyboard(active_subs))
+
+
+# Получение инфо-ии по конкретной подписке пользователя
+@router.callback_query(F.data.startswith("get_info_"))
+async def get_info(call: CallbackQuery, state: FSMContext):
+    """
+
+    :param call:
+    :param state:
+    :return:
+    """
+    try:
+        panel_uuid = call.data[9:]
+        user_id = call.from_user.id
+        user_data = get_user_data(user_id)
+        if user_data is not None and user_data.get('subscriptions') is not None:
+            for sub in user_data['subscriptions']:
+                if sub['panel_uuid'] == panel_uuid:
+                    api = login()
+                    config_url = get_client_url(api, panel_uuid)
+                    byte_arr = get_qr_code(config_url)
+                    # Высылаем данные пользователю
+                    await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                                         caption=get_success_pay_message(config_url),
+                                         reply_markup=get_success_pay_keyboard())
+    except Exception:
+        wakeup_admins(f"Ошибка отправки данных пользователю panel_uuid={call.data[9:]} {call.from_user.id=}")
+        traceback.print_exc()
+
+
+# Сохранение данных о подписке
 def save_subscription(user_id, payment, notification, datetime_expire, panel_uuid, try_period=False):
     """
     :param try_period:
@@ -145,6 +232,7 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
         traceback.print_exc()
 
 
+# Пробная подписка
 @router.callback_query(F.data == "try_period")
 async def process_try_period(call: CallbackQuery, state: FSMContext):
     """
@@ -187,6 +275,7 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
         traceback.print_exc()
 
 
+# Продление подписки
 @router.callback_query(F.data.startswith("continue_"))
 async def continue_subscribe(call: CallbackQuery, state: FSMContext):
     """
@@ -208,9 +297,10 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
                     return
 
         if subscription:
+            fin_price = str(int(subscription['price'] * (100 - int(user_data['sale'])) / 100))
             payment = Payment.create({
                 "amount": {
-                    "value": str(subscription['price']),
+                    "value": fin_price,
                     "currency": "RUB"
                 },
                 "confirmation": {
@@ -232,8 +322,8 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
                 }
             )
 
-            await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
-                                                                                            payment.confirmation.confirmation_url))
+            await call.message.answer(text=get_pay_message(user_data['sale']),
+                                      reply_markup=get_pay_keyboard(fin_price, payment.confirmation.confirmation_url))
         else:
             await call.message.answer("Неверная команда. Напишите /start")
         await state.clear()
@@ -242,6 +332,7 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
         traceback.print_exc()
 
 
+# Покупка подписки
 @router.callback_query(F.data.startswith("month_") | F.data.startswith("year_"))
 async def process_subscribe(call: CallbackQuery, state: FSMContext):
     """
@@ -253,9 +344,14 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
     try:
         subscription = subscriptions.get(call.data)
         if subscription:
+            user_id = call.from_user.id
+            user_data = get_user_data(user_id)
+
+            fin_price = str(int(subscription['price'] * (100 - int(user_data['sale'])) / 100))
+
             payment = Payment.create({
                 "amount": {
-                    "value": str(subscription['price']),
+                    "value": fin_price,
                     "currency": "RUB"
                 },
                 "confirmation": {
@@ -277,8 +373,12 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
                 }
             )
 
-            await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
-                                                                                            payment.confirmation.confirmation_url))
+            referral_reward(user_data['referral'])
+            user_data['referral'] = ""
+            save_user(user_id, user_data)
+
+            await call.message.answer(text=get_pay_message(user_data['sale']), reply_markup=get_pay_keyboard(fin_price,
+                                                                                                             payment.confirmation.confirmation_url))
         else:
             await call.message.answer("Неверная команда. Напишите /start")
         await state.clear()
@@ -287,57 +387,7 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
         traceback.print_exc()
 
 
-@router.message(Command('my_subs'))
-async def my_subs(message: types.Message):
-    """
-
-    :param message:
-    :return:
-    """
-    user_data = get_user_data(message.from_user.id)
-    if user_data is None:
-        await message.answer(text=get_empty_subscriptions_message())
-    else:
-        active_subs = []
-        inactive_subs = []
-        subscriptions = user_data.get('subscriptions')
-        for sub in subscriptions:
-            status = sub.get('active')
-            if status is True:
-                active_subs.append(sub)
-            else:
-                inactive_subs.append(sub)
-        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs),
-                             reply_markup=get_active_subscriptions_keyboard(active_subs))
-
-
-@router.callback_query(F.data.startswith("get_info_"))
-async def get_info(call: CallbackQuery, state: FSMContext):
-    """
-
-    :param call:
-    :param state:
-    :return:
-    """
-    try:
-        panel_uuid = call.data[9:]
-        user_id = call.from_user.id
-        user_data = get_user_data(user_id)
-        if user_data is not None and user_data.get('subscriptions') is not None:
-            for sub in user_data['subscriptions']:
-                if sub['panel_uuid'] == panel_uuid:
-                    api = login()
-                    config_url = get_client_url(api, panel_uuid)
-                    byte_arr = get_qr_code(config_url)
-                    # Высылаем данные пользователю
-                    await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
-                                         caption=get_success_pay_message(config_url),
-                                         reply_markup=get_success_pay_keyboard())
-    except Exception:
-        wakeup_admins(f"Ошибка отправки данных пользователю panel_uuid={call.data[9:]} {call.from_user.id=}")
-        traceback.print_exc()
-
-
+# Создание нового клиента в 3xui
 async def create_new_client(user_id, payment, notification):
     """
 
@@ -384,6 +434,7 @@ async def create_new_client(user_id, payment, notification):
         traceback.print_exc()
 
 
+# Продление клиента в 3xui
 async def conti_client(user_id, payment, notification):
     """
 
@@ -525,6 +576,5 @@ if __name__ == '__main__':
         # And finally start webserver
         web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
 
-# TODO: Антиспам
 # TODO: Инструкции
 # TODO: рефералка
