@@ -90,22 +90,27 @@ def get_qr_code(config_url):
     return byte_arr
 
 
-def referral_reward(referral):
+async def referral_reward(referral):
     user_id = referral
     user_data = get_user_data(user_id)
     if user_data['sale'] >= 15:
-        bot.send_message(user_id, get_sale_limit_message(user_data['sale']))
+        await bot.send_message(user_id, get_sale_limit_message(user_data['sale']))
     else:
         user_data['sale'] += 3
         save_user(user_id, user_data)
-        bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
+        await bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
 
 
 # Создание реф. ссылок
 @router.message(Command('my_ref'))
 async def get_ref(message: types.Message):
-    link = await create_start_link(bot, str(message.from_user.id), encode=True)
-    await bot.send_message(message.from_user.id, f"🔗 Ваша реф. ссылка {link}")
+    user_id = str(message.from_user.id)
+    user_data = get_user_data(user_id)
+    if user_data is not None:
+        link = await create_start_link(bot, user_id, encode=True)
+        await bot.send_message(user_id, get_ref_link_message())
+    else:
+        await bot.send_message(user_id, f"Напиши /start")
 
 
 # Приветствие
