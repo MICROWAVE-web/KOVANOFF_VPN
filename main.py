@@ -108,7 +108,7 @@ async def get_ref(message: types.Message):
     user_data = get_user_data(user_id)
     if user_data is not None:
         link = await create_start_link(bot, user_id, encode=True)
-        await bot.send_message(user_id, get_ref_link_message())
+        await bot.send_message(user_id, get_ref_link_message(link))
     else:
         await bot.send_message(user_id, f"Напиши /start")
 

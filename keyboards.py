@@ -187,7 +187,7 @@ def get_cancel_try_period_message():
 
 # Реферал
 
-def get_ref_link_message():
+def get_ref_link_message(link):
     return f"🔗 Ваша реф. ссылка {link}"
 
 def get_sale_limit_message(sale):
