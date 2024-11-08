@@ -74,11 +74,6 @@ def wakeup_admins(message):
         bot.send_message(chat_id=admin, text=message)
 
 
-async def anti_flood(*args, **kwargs):
-    m = args[0]
-    await m.answer("Не флуди 🥰")
-
-
 @router.message(CommandStart())
 async def send_welcome(message: types.Message):
     await message.reply(get_welcome_message(), reply_markup=get_welcome_keyboard())

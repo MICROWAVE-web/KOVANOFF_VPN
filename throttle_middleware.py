@@ -27,7 +27,7 @@ def rate_limit(limit: int, key=None):
 
 
 class ThrottlingMiddleware(BaseMiddleware):
-    def __init__(self, redis: redis.asyncio.client.Redis, limit=.5, key_prefix='antiflood_'):
+    def __init__(self, redis: redis.asyncio.client.Redis, limit=1, key_prefix='antiflood_'):
         self.rate_limit = limit
         self.prefix = key_prefix
         self.throttle_manager = ThrottleManager(redis=redis)
@@ -76,7 +76,7 @@ class ThrottlingMiddleware(BaseMiddleware):
 
         # Prevent flooding
         if throttled.exceeded_count <= 2:
-            await event.answer(f'Too many events.\nTry again in {delta:.2f} seconds.')
+            await event.answer(f'Не флуди 🥰\nПопробуй через {delta:.2f} seconds.')
 
 
 class ThrottleManager:
