@@ -100,6 +100,7 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
     user_data = get_user_data(user_id)
     if user_data is None:
         add_user(user_id, {
+            'try_period': True if try_period else False,
             'subscriptions': [
                 {
                     'payment_id': notification.object.id if try_period is False else '-',
@@ -112,6 +113,7 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
             ],
         })
     else:
+        user_data['try_period'] = True if try_period else False
         user_data['subscriptions'].append(
             {
                 'payment_id': notification.object.id if try_period is False else '-',
@@ -129,11 +131,9 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
 async def process_try_period(call: CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
     user_data = get_user_data(user_id)
-    if user_data.get("try_period") is not None and user_data["try_period"] is True:
+    if user_data is not None and user_data.get("try_period") is not None and user_data["try_period"] is True:
         await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard())
     else:
-        user_data['try_period'] = True
-        save_user(user_id, user_data)
 
         # Добавляем в 3x-ui
         api = login()
@@ -147,9 +147,9 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
         datetime_expire = datetime.now(tz) + user_delta
 
         # Записываем в users.json
-        save_subscription(user_id, None, None, datetime_expire, panel_uuid)
+        save_subscription(user_id, None, None, datetime_expire, panel_uuid, try_period=True)
 
-        # Отключаем подписку, через datetime_expire
+        # Отключаем подписку, через user_delta
         celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
         byte_arr = get_qr_code(config_url)
@@ -297,7 +297,7 @@ async def create_new_client(user_id, payment, notification):
 
     remove_payment(notification.object.id)
 
-    # Отключаем подписку, через datetime_expire
+    # Отключаем подписку, через user_delta
     celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
     # Создаём напоминание
