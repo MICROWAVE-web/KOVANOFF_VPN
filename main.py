@@ -6,12 +6,11 @@ import sys
 import time
 import traceback
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import pytz
 import qrcode
 import redis
-from aiogram import Bot, Dispatcher, F, Router
+from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, CommandObject
@@ -21,54 +20,16 @@ from aiogram.utils.deep_linking import create_start_link
 from aiogram.utils.payload import decode_payload
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
-from decouple import config
-from yookassa import Payment, Configuration
+from yookassa import Payment
 from yookassa.domain.notification import WebhookNotification
 
 import celery_worker
+from headers import ADMINS, router, DATETIME_FORMAT, tz, K_remind, WEBHOOK_PATH, BASE_WEBHOOK_URL, PAYMENT_WEBHOOK_PATH, \
+    mode, API_TOKEN, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBAPP_HOST, WEBAPP_PORT
 from keyboards import *
 from manager import *
 from panel_3xui import login, add_client, get_client_url, continue_client
 from throttle_middleware import ThrottlingMiddleware
-
-# Токер телеграмм
-API_TOKEN = config('API_TOKEN')
-
-# Id администраторов
-ADMINS = config('ADMINS').split(',')
-
-# Юкасса
-YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
-YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
-
-# Настройка webhook
-BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}:443'
-WEBHOOK_PATH = '/webhook'
-PAYMENT_WEBHOOK_PATH = '/payment-webhook'
-
-WEBAPP_HOST = '127.0.0.1'
-WEBAPP_PORT = int(config("WEBAPP_PORT"))
-
-WEBHOOK_SECRET = config('WEBHOOK_SECRET')
-
-WEBHOOK_SSL_CERT = config('WEBHOOK_SSL_CERT')
-WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
-
-# Формат времени
-DATETIME_FORMAT = "%Y-%m-%d %H:%M"
-
-# defining the timezone
-tz = pytz.timezone('Europe/Moscow')
-
-# Роутер
-router = Router()
-
-# Режим проограммы
-mode = config('MODE')
-
-# Настройка конфигурации ЮKassa
-Configuration.account_id = YOOKASSA_SHOP_ID
-Configuration.secret_key = YOOKASSA_SECRET_KEY
 
 
 def wakeup_admins(message):
@@ -419,8 +380,8 @@ async def create_new_client(user_id, payment, notification):
 
         # Вычисляем времена
         datetime_expire = datetime.now(tz) + user_delta
-        days_before_expire = 4
-        datetime_remind = datetime_expire - timedelta(days=days_before_expire)
+
+        datetime_remind = datetime_expire + user_delta * K_remind
 
         # Записываем в users.json
         save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
@@ -431,7 +392,8 @@ async def create_new_client(user_id, payment, notification):
         celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
         # Создаём напоминание
-        celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire, panel_uuid), eta=datetime_remind)
+        celery_worker.remind_subscribtion.apply_async((user_id, (user_delta * (1 - K_remind)).days, panel_uuid),
+                                                      eta=datetime_remind)
 
         byte_arr = get_qr_code(config_url)
         # Высылаем данные пользователю
@@ -454,21 +416,36 @@ async def conti_client(user_id, payment, notification):
     """
     try:
         user_data = get_user_data(user_id)
+        user_delta = subscriptions[payment['subscription']]['period']
         panel_uuid = payment['panel_uuid']
         for sub in user_data['subscriptions']:
             if sub['panel_uuid'] == panel_uuid:
                 user_sub = sub['subscription']
                 new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + \
                                       subscriptions[user_sub]['period']
+                datetime_remind = new_datetime_expire + user_delta * K_remind
 
+                # Продлеваем в 3x-ui
                 api = login()
                 continue_client(api, panel_uuid, new_datetime_expire)
                 sub['payment_id'] = notification.object.id
                 sub['datetime_expire'] = new_datetime_expire.strftime(DATETIME_FORMAT)
-                break
-        save_user(user_id, user_data)
 
-        remove_payment(notification.object.id)
+                save_user(user_id, user_data)
+
+                remove_payment(notification.object.id)
+
+                # Отключаем подписку, через user_delta
+                celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=new_datetime_expire)
+
+                # Создаём напоминание
+                celery_worker.remind_subscribtion.apply_async((user_id, (user_delta * (1 - K_remind)).days, panel_uuid),
+                                                              eta=datetime_remind)
+
+                # Уведомляем об успешном продлении подписки
+                await bot.send_message(user_id,
+                                       text=get_success_continue_message(new_datetime_expire.strftime(DATETIME_FORMAT)))
+                return
     except Exception as e:
         wakeup_admins(f"Ошибка продления подписки {user_id=} {notification.object.id=}")
         traceback.print_exc()

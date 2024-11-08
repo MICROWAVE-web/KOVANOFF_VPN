@@ -2,31 +2,23 @@ import asyncio
 import logging
 import sys
 import traceback
+from datetime import datetime, timedelta
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from celery import Celery
 from decouple import config
-from yookassa import Configuration
 
+from headers import ADMINS, DATETIME_FORMAT, tz
 from keyboards import get_cancel_subsciption, get_remind_message, get_continue_keyboard, get_cancel_keyboard
 from manager import get_user_data, save_user
 from panel_3xui import login, delete_client
-
-YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
-YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
-
-# Настройка конфигурации ЮKassa
-Configuration.account_id = YOOKASSA_SHOP_ID
-Configuration.secret_key = YOOKASSA_SECRET_KEY
 
 # Инициализация Celery
 app = Celery('tasks', broker='redis://localhost:6379/0')
 app.conf.broker_connection_retry_on_startup = True
 bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-ADMINS = config('ADMINS').split(',')
 
 # Логгирвание
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -59,6 +51,15 @@ def cancel_subscribtion(user_id, panel_uuid):
     :param panel_uuid:
     :return:
     """
+    user_data = get_user_data(user_id)
+    for sub in user_data['subscriptions']:
+        if sub['panel_uuid'] == panel_uuid:
+            exp_date = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date()
+            now_date = datetime.now(tz) + timedelta(hours=1)
+            if exp_date > now_date:
+                logging.info(
+                    f"Подписка {user_id=} {panel_uuid=} не будет отменена, тк была продлена до {sub['datetime_expire']}")
+                return
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()

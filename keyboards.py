@@ -178,7 +178,12 @@ def get_continue_keyboard(panel_uuid):
     button1 = types.InlineKeyboardButton(text="Продлить подписку", callback_data=f"continue_{panel_uuid}")
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
 
+# Продление подписки
 
+def get_success_continue_message(exp_date):
+    return f"""
+Подписка успешно продлена! ✅
+Дата окончания подписки: {exp_date}"""
 # Пробная подписка
 def get_cancel_try_period_message():
     return """
