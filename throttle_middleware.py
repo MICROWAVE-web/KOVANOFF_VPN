@@ -92,7 +92,7 @@ class ThrottleManager:
         now = time.time()
         bucket_name = f'throttle_{key}_{user_id}_{chat_id}'
 
-        data = await self.redis.hmget(bucket_name, self.bucket_keys)
+        data = self.redis.hmget(bucket_name, self.bucket_keys)
         data = {
             k: float(v.decode())
             if isinstance(v, bytes)
