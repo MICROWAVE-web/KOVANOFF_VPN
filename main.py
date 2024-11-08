@@ -386,10 +386,6 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
                 }
             )
 
-            await referral_reward(user_data['referral'])
-            user_data['referral'] = ""
-            save_user(user_id, user_data)
-
             await call.message.answer(text=get_pay_message(user_data['sale']), reply_markup=get_pay_keyboard(fin_price,
                                                                                                              payment.confirmation.confirmation_url))
         else:
@@ -499,6 +495,13 @@ async def payment_webhook_handler(request):
             if payment['creation'] is True:
                 # Создаём нового клиента
                 await create_new_client(user_id, payment, notification)
+
+                # Вознаграждаем реферала
+                user_data = get_user_data(user_id)
+                await referral_reward(user_data['referral'])
+                user_data['referral'] = ""
+                save_user(user_id, user_data)
+
             elif payment['continuation'] is True:
                 # Продлеваем клиента
                 await conti_client(user_id, payment, notification)
