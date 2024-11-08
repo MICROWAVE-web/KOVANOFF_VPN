@@ -161,6 +161,21 @@ def get_remind_message(days_before_expr):
 ❗ Внимание, ваша подписка закончится через {days_before_expr} дня. Поспешите продлить доступ к интернету без ограничений 🚀"""
 
 
+def get_continue_cancell_message():
+    return f"""
+⛔ К сожалению ваша подписка закончилась. Продлить её не получиться. Вы всегда можете приобрести новую 🚀"""
+
+
 def get_cancel_keyboard():
     button1 = types.InlineKeyboardButton(text="Приобрести подписку", callback_data="get_sub")
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+
+
+def get_continue_keyboard(panel_uuid):
+    button1 = types.InlineKeyboardButton(text="Продлить подписку", callback_data=f"continue_{panel_uuid}")
+    return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+
+
+def get_cancel_try_period_message():
+    return """
+К сожалению воспользоваться пробным периодом можно только 1 раз 😁. Рекомендуем приобрести подписку"""

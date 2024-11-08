@@ -10,7 +10,7 @@ from celery import Celery
 from decouple import config
 from yookassa import Configuration
 
-from keyboards import get_cancel_subsciption, get_remind_message
+from keyboards import get_cancel_subsciption, get_remind_message, get_continue_keyboard, get_cancel_keyboard
 from manager import get_user_data, save_user
 from panel_3xui import login, delete_client
 
@@ -59,14 +59,15 @@ def cancel_subscribtion(user_id, panel_uuid):
     # TODO: При ошибке уведомить администратора
 
     async def _snd_prompt(usr_id):
-        await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_subsciption())
+        await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
 
     asyncio.run(_snd_prompt(user_id))
 
 
 @app.task
-def remind_subscribtion(user_id, days_before_expire):
-    async def _snd_prompt(usr_id, days_before_expr):
-        await bot.send_message(usr_id, text=get_remind_message(days_before_expr), reply_markup=get_cancel_subsciption())
+def remind_subscribtion(user_id, days_before_expire, panel_uuid):
+    async def _snd_prompt(usr_id, days_before_expr, pnl_uuid):
+        await bot.send_message(usr_id, text=get_remind_message(days_before_expr),
+                               reply_markup=get_continue_keyboard(pnl_uuid))
 
-    asyncio.run(_snd_prompt(user_id, days_before_expire))
+    asyncio.run(_snd_prompt(user_id, days_before_expire, panel_uuid))

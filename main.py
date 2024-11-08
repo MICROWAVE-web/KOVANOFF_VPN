@@ -89,15 +89,46 @@ async def get_sub(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "try_period")
 async def process_try_period(call: CallbackQuery, state: FSMContext):
-    pass
+    user_id = call.from_user.id
+    user_data = get_user_data(user_id)
+    if user_data.get("try_period") is not None and user_data["try_period"] is True:
+        await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard())
+    else:
+        user_data['try_period'] = True
+        save_user(user_id, user_data)
+
+        # Добавляем в 3x-ui
+        api = login()
+        user_delta = subscriptions['try_period']['period']
+        devices_count = subscriptions['try_period']['devices']
+        panel_uuid = str(uuid.uuid4())
+        logging.info(f"User (id: {panel_uuid}) was created.")
+        add_client(api, panel_uuid, devices_count, user_delta)
+        config_url = get_client_url(api, panel_uuid)
+
+        datetime_expire = datetime.now(tz) + user_delta
+
+        # Отключаем подписку, через datetime_expire
+        celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
+
+        byte_arr = get_qr_code(config_url)
+        # Высылаем данные пользователю
+        await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                             caption=get_success_pay_message(config_url),
+                             reply_markup=get_success_pay_keyboard())
 
 
 @router.callback_query(F.data.startswith("continue_"))
 async def continue_subscribe(call: CallbackQuery, state: FSMContext):
     panel_uuid = call.data[9:45]
     subscription = subscriptions.get(call.data[45:])
-
-    # TODO: Проверить, что подписка ещё не закончилась
+    user_id = call.from_user.id
+    user_data = get_user_data(user_id)
+    if user_data is not None and user_data.get('subscriptions') is not None:
+        for sub in user_data['subscriptions']:
+            if sub['panel_uuid'] == panel_uuid and sub['active'] is False:
+                await bot.send_message(user_id, text=get_continue_cancell_message(), reply_markup=get_cancel_keyboard())
+                return
 
     if subscription:
         payment = Payment.create({
@@ -233,7 +264,6 @@ async def create_new_client(user_id, payment, notification):
                     'active': True
                 }
             ],
-            'last_refund': None
         })
     else:
         user_data['subscriptions'].append(
@@ -250,11 +280,11 @@ async def create_new_client(user_id, payment, notification):
 
     remove_payment(notification.object.id)
 
-    # Отключаем подписку, через user_delta
+    # Отключаем подписку, через datetime_expire
     celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
     # Создаём напоминание
-    celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire), eta=datetime_remind)
+    celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire, panel_uuid), eta=datetime_remind)
 
     byte_arr = get_qr_code(config_url)
     # Высылаем данные пользователю
@@ -393,4 +423,4 @@ if __name__ == '__main__':
         # And finally start webserver
         web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
 
-# TODO: Добавить возможность получить данные активных подписок
+# TODO: Антиспам
