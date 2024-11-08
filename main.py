@@ -386,7 +386,7 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
                 }
             )
 
-            referral_reward(user_data['referral'])
+            await referral_reward(user_data['referral'])
             user_data['referral'] = ""
             save_user(user_id, user_data)
 
