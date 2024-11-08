@@ -8,6 +8,7 @@ import traceback
 import uuid
 from datetime import datetime, timedelta
 
+import pytz
 import qrcode
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -18,12 +19,13 @@ from aiogram.types import CallbackQuery, BufferedInputFile
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from decouple import config
-from yookassa import Payment, Refund, Configuration
+from yookassa import Payment, Configuration
 from yookassa.domain.notification import WebhookNotification
 
+import celery_worker
 from keyboards import *
 from manager import *
-from panel_3xui import login, add_client, get_client_url
+from panel_3xui import login, add_client, get_client_url, continue_client
 
 API_TOKEN = config('API_TOKEN')
 
@@ -43,6 +45,10 @@ WEBHOOK_SSL_CERT = config('WEBHOOK_SSL_CERT')
 WEBHOOK_SSL_PRIV = config('WEBHOOK_SSL_PRIV')
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
+
+# defining the timezone
+tz = pytz.timezone('Europe/Moscow')
+
 # Роутер
 router = Router()
 
@@ -65,10 +71,63 @@ async def test_send_message(message: types.Message):
     await message.reply("Сообщение будет отправлено через 30 секунд.")'''
 
 
+def get_qr_code(config_url):
+    # Генерируем QR-code
+    img = qrcode.make(config_url)
+    byte_arr = io.BytesIO()
+    img.save(byte_arr, format='PNG')
+    byte_arr.seek(0)
+    return byte_arr
+
+
 @router.callback_query(F.data == 'get_sub')
 async def get_sub(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
     await call.message.answer(text=get_subs_message()[1], reply_markup=get_subs_keyboard()[1])
+    await state.clear()
+
+
+@router.callback_query(F.data == "try_period")
+async def process_try_period(call: CallbackQuery, state: FSMContext):
+    pass
+
+
+@router.callback_query(F.data.startswith("continue_"))
+async def continue_subscribe(call: CallbackQuery, state: FSMContext):
+    panel_uuid = call.data[9:45]
+    subscription = subscriptions.get(call.data[45:])
+
+    # TODO: Проверить, что подписка ещё не закончилась
+
+    if subscription:
+        payment = Payment.create({
+            "amount": {
+                "value": str(subscription['price']),
+                "currency": "RUB"
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": "https://t.me/kovanoff_vpn_bot"
+            },
+            "capture": True,
+            "description": subscription['name']
+        }, uuid.uuid4())
+
+        add_payment(
+            payment.id,
+            {
+                'user_id': call.from_user.id,
+                'subscription': call.data,
+                'creation': False,
+                'continuation': True,
+                'panel_uuid': panel_uuid
+            }
+        )
+
+        await call.message.answer(text=get_pay_message(), reply_markup=get_pay_keyboard(subscription['price'],
+                                                                                        payment.confirmation.confirmation_url))
+    else:
+        await call.message.answer("Неверная команда. Напишите /start")
     await state.clear()
 
 
@@ -94,6 +153,9 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
             {
                 'user_id': call.from_user.id,
                 'subscription': call.data,
+                'creation': True,
+                'continuation': False,
+                'panel_uuid': ''
             }
         )
 
@@ -119,28 +181,89 @@ async def my_subs(message: types.Message):
                 active_subs.append(sub)
             else:
                 inactive_subs.append(sub)
-        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs))
+        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs), reply_markup=get_active_subscriptions_keyboard(active_subs))
 
 
-@router.message(Command('refund'))
-async def process_refund(message: types.Message):
-    for payment_id, info in payments.items():
-        if info['user_id'] == message.from_user.id:
-            elapsed = datetime.now() - info['timestamp']
-            if elapsed <= timedelta(days=2):
-                refund = Refund.create({
-                    "amount": {
-                        "value": "2.00",
-                        "currency": "RUB"
-                    },
-                    "payment_id": "21740069-000f-50be-b000-0486ffbf45b0"
-                })
-                await message.reply(f"Возврат средств за {info['subscription']['name']} выполнен.")
-                del payments[payment_id]
-                return
-            else:
-                await message.reply("Возврат возможен только в течение 2 дней после оплаты.")
-                return
+async def create_new_client(user_id, payment, notification):
+    user_data = get_user_data(user_id)
+    panel_uuid = str(uuid.uuid4())
+
+    # Добавляем в 3x-ui
+    api = login()
+    user_delta = subscriptions[payment['subscription']]['period']
+    devices_count = subscriptions[payment['subscription']]['devices']
+    logging.info(f"User (id: {panel_uuid}) was created.")
+    add_client(api, panel_uuid, devices_count, user_delta)
+
+    config_url = get_client_url(api, panel_uuid)
+
+    # Вычисляем времена
+    datetime_expire = datetime.now(tz) + user_delta
+    days_before_expire = 4
+    datetime_remind = datetime_expire - timedelta(days=days_before_expire)
+
+    # Записываем в users.json
+    if user_data is None:
+        add_user(user_id, {
+            'subscriptions': [
+                {
+                    'payment_id': notification.object.id,
+                    'subscription': payment['subscription'],
+                    'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
+                    'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
+                    'panel_uuid': panel_uuid,
+                    'active': True
+                }
+            ],
+            'last_refund': None
+        })
+    else:
+        user_data['subscriptions'].append(
+            {
+                'payment_id': notification.object.id,
+                'subscription': payment['subscription'],
+                'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
+                'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
+                'panel_uuid': panel_uuid,
+                'active': True
+            }
+        )
+        save_user(user_id, user_data)
+
+    remove_payment(notification.object.id)
+
+    # Отключаем подписку, через user_delta
+    celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
+
+    # Создаём напоминание
+    celery_worker.remind_subscribtion.apply_async((user_id, days_before_expire), eta=datetime_remind)
+
+    byte_arr = get_qr_code(config_url)
+    # Высылаем данные пользователю
+    await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
+                         caption=get_success_pay_message(config_url),
+                         reply_markup=get_success_pay_keyboard())
+
+
+async def conti_client(user_id, payment, notification):
+    user_data = get_user_data(user_id)
+    panel_uuid = payment['panel_uuid']
+    for sub in user_data['subscriptions']:
+        if sub['panel_uuid'] == panel_uuid:
+            user_sub = sub['subscription']
+            new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + \
+                                  subscriptions[user_sub]['period']
+
+            api = login()
+            continue_client(api, panel_uuid, new_datetime_expire)
+            sub['payment_id'] = notification.object.id
+            sub['datetime_expire'] = new_datetime_expire.strftime(DATETIME_FORMAT)
+            break
+    save_user(user_id, user_data)
+
+    remove_payment(notification.object.id)
+
+    # TODO: При ошибке уведомить администратора
 
 
 # Обработчик webhook для платежной системы
@@ -161,52 +284,12 @@ async def payment_webhook_handler(request):
             if payments is not None and notification.object.id in payments:
                 return web.Response(status=200)
 
-            user_data = get_user_data(user_id)
-            panel_uuid = str(uuid.uuid4())
-
-            api = login()
-            user_delta = subscriptions[payment['subscription']]['period']
-            devices_count = subscriptions[payment['subscription']]['devices']
-            add_client(api, panel_uuid, devices_count, user_delta)
-            config_url = get_client_url(api, panel_uuid)
-
-            if user_data is None:
-                add_user(user_id, {
-                    'subscriptions': [
-                        {
-                            'payment_id': notification.object.id,
-                            'subscription': payment['subscription'],
-                            'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
-                            'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
-                            'panel_uuid': panel_uuid,
-                            'active': True
-                        }
-                    ],
-                    'last_refund': None
-                })
-            else:
-                user_data['subscriptions'].append(
-                    {
-                        'payment_id': notification.object.id,
-                        'subscription': payment['subscription'],
-                        'datetime_operation': datetime.now().strftime(DATETIME_FORMAT),
-                        'datetime_expire': (datetime.now() + user_delta).strftime(DATETIME_FORMAT),
-                        'panel_uuid': panel_uuid,
-                        'active': True
-                    }
-                )
-                save_user(user_id, user_data)
-
-            remove_payment(notification.object.id)
-
-            img = qrcode.make(config_url)
-            byte_arr = io.BytesIO()
-            img.save(byte_arr, format='PNG')
-            byte_arr.seek(0)
-
-            await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
-                                 caption=get_success_pay_message(config_url),
-                                 reply_markup=get_success_pay_keyboard())
+            if payment['creation'] is True:
+                # Создаём нового клиента
+                await create_new_client(user_id, payment, notification)
+            elif payment['continuation'] is True:
+                # Продлеваем клиента
+                await conti_client(user_id, payment, notification)
 
             return web.Response(status=200)
 
@@ -228,15 +311,6 @@ async def payment_webhook_handler(request):
             await bot.send_message(user_id, get_canceled_pay_message(),
                                    reply_markup=get_canceled_pay_keyboard(sub_name, sub))
 
-            remove_payment(notification.object.id)
-
-            return web.Response(status=200)
-
-        elif notification.event == 'refund.succeeded':
-            logging.info(f"Refund succeeded for payment id: {notification.object.id}")
-
-            payment = get_payment(notification.object.id)
-            # Уведомить об успешном возврате
             remove_payment(notification.object.id)
 
             return web.Response(status=200)
@@ -300,3 +374,5 @@ if __name__ == '__main__':
 
         # And finally start webserver
         web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
+
+# TODO: Добавить возможность получить данные активных подписок

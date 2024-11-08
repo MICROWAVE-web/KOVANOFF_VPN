@@ -1,12 +1,15 @@
 import datetime
 import logging
 import sys
+import time
 import uuid
 
+import pytz
 from decouple import config
 from py3xui import Api, Client
 
 inbound_id = 2
+tz = pytz.timezone('Europe/Moscow')
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -37,7 +40,6 @@ def get_client_and_inbound_by_email(api, name):
     inbounds = get_inbounds(api)
     for inbound in inbounds:
         for user in inbound.settings.clients:
-            print(name, user.email, name == user.email)
             if name == user.email:
                 return inbound, user
 
@@ -53,7 +55,7 @@ def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total
     '''
     name = str(name)
     uuid_str = str(uuid.uuid4())
-    expiry_time = int((datetime.datetime.now() + expiry_delta).timestamp()) * 1000
+    expiry_time = int((datetime.datetime.now(tz) + expiry_delta).timestamp()) * 1000
     new_client = Client(id=uuid_str, email=name, enable=True,
                         limit_ip=limit_ip, expiry_time=expiry_time,
                         flow="xtls-rprx-vision", total_gb=total_gb)
@@ -74,9 +76,17 @@ def get_client_url(api, name):
     return config_ufl
 
 
+def continue_client(api, name, new_expiredate):
+    _, nc = get_client_and_inbound_by_email(api, name)
+    client = api.client.get_by_email(name)
+    client.expiry_time = int(new_expiredate.timestamp()) * 1000
+    client.id = nc.id
+    api.client.update(nc.id, client)
+
+
 if __name__ == "__main__":
     panel_uuid = str(uuid.uuid4())
-    print(panel_uuid)
     api = login()
     add_client(api, panel_uuid, 2, datetime.timedelta(hours=1))
-    get_client_url(api, panel_uuid)
+    time.sleep(3)
+    # continue_client(api, panel_uuid,)

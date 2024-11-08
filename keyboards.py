@@ -85,7 +85,9 @@ def get_success_pay_message(config_url):
     return f"""
 ✅ Супер! Вот ваши данные для VPN подключения: 🌐
 
-<blockquote>{config_url}</blockquote>"""
+<blockquote>{config_url}</blockquote>
+
+Спасибо за выбор Kovanoff VPN 🍀"""
 
 
 def get_success_pay_keyboard():
@@ -125,12 +127,11 @@ def get_actual_subscriptions_message(active_subs, inactive_subs):
 До: {sub['datetime_expire']}</blockquote>
 """
 
-
     inactive_subs_text = ""
     for sub in inactive_subs:
         inactive_subs_text += f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
-{sub['datetime_operation']}
-{sub['datetime_expire']}</blockquote>
+От: {sub['datetime_operation']}
+До: {sub['datetime_expire']}</blockquote>
 """
 
     return f"""
@@ -142,3 +143,28 @@ def get_actual_subscriptions_message(active_subs, inactive_subs):
 🔴 Истёкшие подписки:
 {inactive_subs_text}
 """
+
+
+def get_active_subscriptions_keyboard(active_subs):
+    button_list = [
+        [types.InlineKeyboardButton(text=f"{subscriptions[sub['subscription']]['name']} До:{sub['datetime_expire']}",
+                                    callback_data=f"get_info_{sub['panel_uuid']}")] for sub in active_subs
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=button_list)
+
+
+# Подписка окончена/заканчивается
+
+def get_cancel_subsciption():
+    return """
+⛔ К сожалению ваша подписка закончилась. Поспешите продлить доступ к интернету без ограничений 🚀"""
+
+
+def get_remind_message(days_before_expr):
+    return f"""
+❗ Внимание, ваша подписка закончится через {days_before_expr} дня. Поспешите продлить доступ к интернету без ограничений 🚀"""
+
+
+def get_cancel_keyboard():
+    button1 = types.InlineKeyboardButton(text="Приобрести подписку", callback_data="get_sub")
+    return InlineKeyboardMarkup(inline_keyboard=[[button1]])
