@@ -139,8 +139,7 @@ def get_actual_subscriptions_message(active_subs, inactive_subs):
 
 {"🟢 Активные подписки:" if len(active_subs_text) > 0 else ""}
 {active_subs_text}
-{"🔴 Истёкшие подписки:" if len(inactive_subs_text) > 0 else ""}
-{inactive_subs_text}
+{"🔴 Истёкшие подписки:<br>" + inactive_subs_text if len(inactive_subs_text) > 0 else ""}
 
 Ключи активных подписок:
 """
