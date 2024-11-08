@@ -137,10 +137,9 @@ def get_actual_subscriptions_message(active_subs, inactive_subs):
     return f"""
 📋 Вот список всех ваших VPN подписок: 🌐
 
-🟢 Активные подписки:
+{"🟢 Активные подписки:" if len(active_subs_text) > 0 else ""}
 {active_subs_text}
-
-🔴 Истёкшие подписки:
+{"🔴 Истёкшие подписки:" if len(inactive_subs_text) > 0 else ""}
 {inactive_subs_text}
 
 Ключи активных подписок:
