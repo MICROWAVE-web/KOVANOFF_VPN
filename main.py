@@ -87,6 +87,44 @@ async def get_sub(call: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
+def save_subscription(user_id, payment, notification, datetime_expire, panel_uuid, try_period=False):
+    """
+    :param try_period:
+    :param user_id:
+    :param payment:
+    :param notification:
+    :param datetime_expire:
+    :param panel_uuid:
+    :return:
+    """
+    user_data = get_user_data(user_id)
+    if user_data is None:
+        add_user(user_id, {
+            'subscriptions': [
+                {
+                    'payment_id': notification.object.id if try_period is False else '-',
+                    'subscription': payment['subscription'] if try_period is False else 'try_period',
+                    'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
+                    'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
+                    'panel_uuid': panel_uuid,
+                    'active': True
+                }
+            ],
+        })
+    else:
+        user_data['subscriptions'].append(
+            {
+                'payment_id': notification.object.id if try_period is False else '-',
+                'subscription': payment['subscription'] if try_period is False else 'try_period',
+                'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
+                'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
+                'panel_uuid': panel_uuid,
+                'active': True
+            }
+        )
+        save_user(user_id, user_data)
+
+
 @router.callback_query(F.data == "try_period")
 async def process_try_period(call: CallbackQuery, state: FSMContext):
     user_id = call.from_user.id
@@ -108,6 +146,9 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
 
         datetime_expire = datetime.now(tz) + user_delta
 
+        # Записываем в users.json
+        save_subscription(user_id, None, None, datetime_expire, panel_uuid)
+
         # Отключаем подписку, через datetime_expire
         celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
 
@@ -116,7 +157,8 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
         await bot.send_photo(user_id, photo=BufferedInputFile(file=byte_arr.read(), filename="qrcode.png"),
                              caption=get_success_pay_message(config_url),
                              reply_markup=get_success_pay_keyboard())
-    state.clear()
+    await state.clear()
+
 
 @router.callback_query(F.data.startswith("continue_"))
 async def continue_subscribe(call: CallbackQuery, state: FSMContext):
@@ -234,7 +276,6 @@ async def get_info(call: CallbackQuery, state: FSMContext):
 
 
 async def create_new_client(user_id, payment, notification):
-    user_data = get_user_data(user_id)
     panel_uuid = str(uuid.uuid4())
 
     # Добавляем в 3x-ui
@@ -252,31 +293,7 @@ async def create_new_client(user_id, payment, notification):
     datetime_remind = datetime_expire - timedelta(days=days_before_expire)
 
     # Записываем в users.json
-    if user_data is None:
-        add_user(user_id, {
-            'subscriptions': [
-                {
-                    'payment_id': notification.object.id,
-                    'subscription': payment['subscription'],
-                    'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
-                    'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
-                    'panel_uuid': panel_uuid,
-                    'active': True
-                }
-            ],
-        })
-    else:
-        user_data['subscriptions'].append(
-            {
-                'payment_id': notification.object.id,
-                'subscription': payment['subscription'],
-                'datetime_operation': datetime.now(tz).strftime(DATETIME_FORMAT),
-                'datetime_expire': datetime_expire.strftime(DATETIME_FORMAT),
-                'panel_uuid': panel_uuid,
-                'active': True
-            }
-        )
-        save_user(user_id, user_data)
+    save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
 
     remove_payment(notification.object.id)
 
@@ -424,3 +441,6 @@ if __name__ == '__main__':
         web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
 
 # TODO: Антиспам
+# TODO: Инструкции
+# TODO: Коллбеки на случай ошибки
+# TODO: рефералка
