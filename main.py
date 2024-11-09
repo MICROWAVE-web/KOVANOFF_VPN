@@ -343,6 +343,7 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
 
         if count_active_subscriptions(user_id) >= ACTIVE_COUNT_SUB_LIMIT:
             await bot.send_message(user_id, text=get_subs_limit_message(ACTIVE_COUNT_SUB_LIMIT))
+            return
 
         subscription = subscriptions.get(call.data)
         if subscription:
