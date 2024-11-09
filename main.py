@@ -15,7 +15,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, BufferedInputFile
+from aiogram.types import CallbackQuery, BufferedInputFile, FSInputFile
 from aiogram.utils.deep_linking import create_start_link
 from aiogram.utils.payload import decode_payload
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -98,6 +98,14 @@ async def send_welcome(message: types.Message, command: CommandObject = None):
         save_user(user_id, user_data)
 
     await message.reply(text=get_welcome_message(), reply_markup=get_welcome_keyboard())
+
+
+# Список доступных подписок
+@router.callback_query(F.data.startswith('instruction'))
+async def get_sub(call: CallbackQuery, state: FSMContext):
+    await bot.send_document(chat_id=call.from_user.id,
+                            document=FSInputFile('instruction/Инструкция для всех платформ.docx'))
+    await state.clear()
 
 
 # Список доступных подписок
@@ -568,6 +576,3 @@ if __name__ == '__main__':
 
         # And finally start webserver
         web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT, ssl_context=context)
-
-# TODO: Инструкции
-# TODO: рефералка
