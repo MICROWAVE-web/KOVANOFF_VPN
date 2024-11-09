@@ -25,7 +25,7 @@ from yookassa.domain.notification import WebhookNotification
 
 import celery_worker
 from headers import ADMINS, router, DATETIME_FORMAT, tz, K_remind, WEBHOOK_PATH, BASE_WEBHOOK_URL, PAYMENT_WEBHOOK_PATH, \
-    mode, API_TOKEN, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBAPP_HOST, WEBAPP_PORT
+    mode, API_TOKEN, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBAPP_HOST, WEBAPP_PORT, ACTIVE_COUNT_SUB_LIMIT
 from keyboards import *
 from manager import *
 from panel_3xui import login, add_client, get_client_url, continue_client
@@ -335,13 +335,18 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
     :return:
     """
     try:
-        if TEST_PAYMETNS is True and str(call.from_user.id) not in ADMINS:
-            await bot.send_message(call.from_user.id, text=get_service_working_message())
+        user_id = call.from_user.id
+
+        if TEST_PAYMETNS is True and str(user_id) not in ADMINS:
+            await bot.send_message(user_id, text=get_service_working_message())
             return
+
+        if count_active_subscriptions(user_id) >= ACTIVE_COUNT_SUB_LIMIT:
+            await bot.send_message(user_id, text=get_subs_limit_message(ACTIVE_COUNT_SUB_LIMIT))
 
         subscription = subscriptions.get(call.data)
         if subscription:
-            user_id = call.from_user.id
+
             user_data = get_user_data(user_id)
 
             fin_price = str(int(subscription['price'] * (100 - int(user_data['sale'])) / 100))

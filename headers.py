@@ -49,3 +49,7 @@ Configuration.secret_key = YOOKASSA_SECRET_KEY
 
 # Кое-т для напоминания
 K_remind = 0.85
+
+# Лимит активных подписок
+ACTIVE_COUNT_SUB_LIMIT = 3
+

@@ -16,6 +16,21 @@ if not os.path.exists(PAYMENTS_FILE):
         json.dump({}, file)
 
 
+def count_active_subscriptions(user_id):
+    user_id = str(user_id)
+    user_data = get_user_data(user_id)
+    if user_data is None:
+        return 0
+    subscriptions = user_data.get('subscriptions')
+    if subscriptions is None:
+        return 0
+    active_subscriptions = 0
+    for subscription in subscriptions:
+        if subscription['active']:
+            active_subscriptions += 1
+    return active_subscriptions
+
+
 def load_users():
     with open(DATA_FILE, 'r', encoding='utf-8') as file:
         return json.load(file)

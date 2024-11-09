@@ -7,6 +7,7 @@ from decouple import config
 from py3xui import Api, Client
 
 from headers import tz
+from manager import count_active_subscriptions
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -82,10 +83,5 @@ def continue_client(api, name, new_expiredate):
 
 
 if __name__ == "__main__":
-    # panel_uuid = str(uuid.uuid4())
-    # api = login()
-    # add_client(api, panel_uuid, 2, datetime.timedelta(hours=1))
-    # time.sleep(3)
-    # continue_client(api, panel_uuid,)
-    t = datetime.timedelta(days=365) * 0.85
-    print(t.days)
+    r = count_active_subscriptions(7409200490)
+    print(r)
