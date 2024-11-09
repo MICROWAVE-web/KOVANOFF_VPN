@@ -1,4 +1,5 @@
 /.env
-/users.json
-/payments.json
+/data_files/users.json
+/data_files/payments.json
 /.venv/
+

@@ -2,8 +2,8 @@ import json
 import os
 
 # Путь к файлу JSON
-DATA_FILE = 'users.json'
-PAYMENTS_FILE = 'payments.json'
+DATA_FILE = 'data_files/users.json'
+PAYMENTS_FILE = 'data_files/payments.json'
 
 # Инициализация JSON-файла, если он не существует
 if not os.path.exists(DATA_FILE):

@@ -111,8 +111,11 @@ async def get_sub(call: CallbackQuery, state: FSMContext):
 # Список доступных подписок
 @router.callback_query(F.data == 'get_sub')
 async def get_sub(call: CallbackQuery, state: FSMContext):
-    await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
-    await call.message.answer(text=get_subs_message()[1], reply_markup=get_subs_keyboard()[1])
+    if TEST_PAYMETNS is not True or str(call.from_user.id) in ADMINS:
+        await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
+        await call.message.answer(text=get_subs_message()[1], reply_markup=get_subs_keyboard()[1])
+    else:
+        await bot.send_message(call.from_user.id, text=get_service_working_message())
     await state.clear()
 
 
@@ -267,6 +270,10 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
     :return:
     """
     try:
+        if TEST_PAYMETNS is True and str(call.from_user.id) not in ADMINS:
+            await bot.send_message(call.from_user.id, text=get_service_working_message())
+            return
+
         panel_uuid = call.data[9:45]
         subscription = subscriptions.get(call.data[45:])
         user_id = call.from_user.id
@@ -324,6 +331,10 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
     :return:
     """
     try:
+        if TEST_PAYMETNS is True and str(call.from_user.id) not in ADMINS:
+            await bot.send_message(call.from_user.id, text=get_service_working_message())
+            return
+
         subscription = subscriptions.get(call.data)
         if subscription:
             user_id = call.from_user.id

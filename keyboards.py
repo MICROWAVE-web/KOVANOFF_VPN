@@ -50,8 +50,9 @@ def get_subs_message():
 
 
 def get_subs_keyboard():
-    testday_1 = types.InlineKeyboardButton(text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price']}₽",
-                                         callback_data="testday_1")
+    testday_1 = types.InlineKeyboardButton(
+        text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price']}₽",
+        callback_data="testday_1")
 
     month_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['month_1']['price']}₽",
                                          callback_data="month_1")
@@ -68,8 +69,11 @@ def get_subs_keyboard():
                                         callback_data="year_3")
 
     return [
-        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3], [testday_1] if TEST_PAYMETNS else None]),
+        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3], [testday_1]]),
         InlineKeyboardMarkup(inline_keyboard=[[year_1], [year_2], [year_3]])
+    ] if not TEST_PAYMETNS else [
+        InlineKeyboardMarkup(inline_keyboard=[[testday_1]]),
+        InlineKeyboardMarkup(inline_keyboard=[])
     ]
 
 
@@ -179,12 +183,15 @@ def get_continue_keyboard(panel_uuid):
     button1 = types.InlineKeyboardButton(text="Продлить подписку", callback_data=f"continue_{panel_uuid}")
     return InlineKeyboardMarkup(inline_keyboard=[[button1]])
 
+
 # Продление подписки
 
 def get_success_continue_message(exp_date):
     return f"""
 Подписка успешно продлена! ✅
 Дата окончания подписки: {exp_date}"""
+
+
 # Пробная подписка
 def get_cancel_try_period_message():
     return """
@@ -196,6 +203,7 @@ def get_cancel_try_period_message():
 def get_ref_link_message(link):
     return f"🔗 Ваша реф. ссылка {link}"
 
+
 def get_sale_limit_message(sale):
     return f"""
 По вашей ссылке приобрели подписку. 💲 
@@ -206,3 +214,12 @@ def get_sale_increase_message(sale):
     return f"""
 По вашей ссылке приобрели подписку. 💲 
 Ваша скидка: {sale}% 📈"""
+
+
+# Технические работы
+def get_service_working_message():
+    return """
+🚧 Внимание! В данный момент проводятся технические работы 🛠️. Наш бот временно недоступен ⏳. Мы прилагаем все усилия, чтобы вернуться как можно скорее! 🔧
+
+Спасибо за ваше терпение и понимание 🙏"""
+
