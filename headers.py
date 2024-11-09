@@ -9,9 +9,14 @@ API_TOKEN = config('API_TOKEN')
 # Id администраторов
 ADMINS = config('ADMINS').split(',')
 
-# Юкасса
-YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
-YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
+# ЮКасса
+TEST_PAYMETNS = bool(int(config('TEST_PAYMENTS')))
+if TEST_PAYMETNS:
+    YOOKASSA_SHOP_ID = config('TEST_YOOKASSA_SHOP_ID')
+    YOOKASSA_SECRET_KEY = config('TEST_YOOKASSA_SECRET_KEY')
+else:
+    YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
+    YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
 
 # Настройка webhook
 BASE_WEBHOOK_URL = f'https://{config("WEBHOOK_DOMAIN")}:443'

@@ -32,9 +32,9 @@ from panel_3xui import login, add_client, get_client_url, continue_client
 from throttle_middleware import ThrottlingMiddleware
 
 
-def wakeup_admins(message):
+async def wakeup_admins(message):
     for admin in ADMINS:
-        bot.send_message(chat_id=admin, text=message)
+        await bot.send_message(chat_id=admin, text=message)
 
 
 def get_qr_code(config_url):
@@ -165,12 +165,12 @@ async def get_info(call: CallbackQuery, state: FSMContext):
                                          caption=get_success_pay_message(config_url),
                                          reply_markup=get_success_pay_keyboard())
     except Exception:
-        wakeup_admins(f"Ошибка отправки данных пользователю panel_uuid={call.data[9:]} {call.from_user.id=}")
+        await wakeup_admins(f"Ошибка отправки данных пользователю panel_uuid={call.data[9:]} {call.from_user.id=}")
         traceback.print_exc()
 
 
 # Сохранение данных о подписке
-def save_subscription(user_id, payment, notification, datetime_expire, panel_uuid, try_period=False):
+async def save_subscription(user_id, payment, notification, datetime_expire, panel_uuid, try_period=False):
     """
     :param try_period:
     :param user_id:
@@ -210,7 +210,7 @@ def save_subscription(user_id, payment, notification, datetime_expire, panel_uui
             )
             save_user(user_id, user_data)
     except Exception:
-        wakeup_admins(f"Ошибка сохранения подписки (файл users.json) {user_id=} {panel_uuid=}")
+        await wakeup_admins(f"Ошибка сохранения подписки (файл users.json) {user_id=} {panel_uuid=}")
         traceback.print_exc()
 
 
@@ -241,7 +241,7 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
             datetime_expire = datetime.now(tz) + user_delta
 
             # Записываем в users.json
-            save_subscription(user_id, None, None, datetime_expire, panel_uuid, try_period=True)
+            await save_subscription(user_id, None, None, datetime_expire, panel_uuid, try_period=True)
 
             # Отключаем подписку, через user_delta
             celery_worker.cancel_subscribtion.apply_async((user_id, panel_uuid), eta=datetime_expire)
@@ -253,7 +253,7 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
                                  reply_markup=get_success_pay_keyboard())
         await state.clear()
     except Exception:
-        wakeup_admins(f"Ошибка cоздания триальной подписки {call.from_user.id=}")
+        await wakeup_admins(f"Ошибка cоздания триальной подписки {call.from_user.id=}")
         traceback.print_exc()
 
 
@@ -310,12 +310,12 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
             await call.message.answer("Неверная команда. Напишите /start")
         await state.clear()
     except Exception:
-        wakeup_admins(f"Ошибка продления подписки (платёж) {call.from_user.id=}")
+        await wakeup_admins(f"Ошибка продления подписки (платёж) {call.from_user.id=}")
         traceback.print_exc()
 
 
 # Покупка подписки
-@router.callback_query(F.data.startswith("month_") | F.data.startswith("year_"))
+@router.callback_query(F.data.startswith("month_") | F.data.startswith("year_") | F.data.startswith("testday_"))
 async def process_subscribe(call: CallbackQuery, state: FSMContext):
     """
 
@@ -361,7 +361,7 @@ async def process_subscribe(call: CallbackQuery, state: FSMContext):
             await call.message.answer("Неверная команда. Напишите /start")
         await state.clear()
     except Exception:
-        wakeup_admins(f"Ошибка создания подписки (платёж) {call.from_user.id=}")
+        await wakeup_admins(f"Ошибка создания подписки (платёж) {call.from_user.id=}")
         traceback.print_exc()
 
 
@@ -392,7 +392,7 @@ async def create_new_client(user_id, payment, notification):
         datetime_remind = datetime_expire + user_delta * K_remind
 
         # Записываем в users.json
-        save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
+        await save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
 
         remove_payment(notification.object.id)
 
@@ -409,7 +409,7 @@ async def create_new_client(user_id, payment, notification):
                              caption=get_success_pay_message(config_url),
                              reply_markup=get_success_pay_keyboard())
     except Exception as e:
-        wakeup_admins(f"Ошибка при создании клиента {user_id=} {notification.object.id=}")
+        await wakeup_admins(f"Ошибка при создании клиента {user_id=} {notification.object.id=}")
         traceback.print_exc()
 
 
@@ -455,7 +455,7 @@ async def conti_client(user_id, payment, notification):
                                        text=get_success_continue_message(new_datetime_expire.strftime(DATETIME_FORMAT)))
                 return
     except Exception as e:
-        wakeup_admins(f"Ошибка продления подписки {user_id=} {notification.object.id=}")
+        await wakeup_admins(f"Ошибка продления подписки {user_id=} {notification.object.id=}")
         traceback.print_exc()
 
 
@@ -519,7 +519,7 @@ async def payment_webhook_handler(request):
             print('Unrecognized event type')
     except Exception as e:
         traceback.print_exc()
-        wakeup_admins(f"Ошибка обработки webhook")
+        await wakeup_admins(f"Ошибка обработки webhook")
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
 

@@ -1,6 +1,11 @@
 from datetime import timedelta
 
 subscriptions = {
+    # Подписка для тестирования
+    'testday_1': {'name': 'VPN на день (тестовая подписка)', 'price': 20, 'period': timedelta(days=1),
+                  'devices': 1},
+
+    # Планы
     'try_period': {'name': 'VPN на день (1 устройство)', 'price': 0, 'period': timedelta(days=1),
                    'devices': 1},
     'month_1': {'name': 'VPN на месяц (1 устройство)', 'price': 100, 'period': timedelta(days=31),

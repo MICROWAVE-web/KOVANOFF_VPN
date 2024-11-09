@@ -1,6 +1,7 @@
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup
 
+from headers import TEST_PAYMETNS
 from subscriptions import subscriptions
 
 
@@ -49,6 +50,9 @@ def get_subs_message():
 
 
 def get_subs_keyboard():
+    testday_1 = types.InlineKeyboardButton(text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price']}₽",
+                                         callback_data="testday_1")
+
     month_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['month_1']['price']}₽",
                                          callback_data="month_1")
     month_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['month_2']['price']}₽",
@@ -64,7 +68,7 @@ def get_subs_keyboard():
                                         callback_data="year_3")
 
     return [
-        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3]]),
+        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3], [testday_1] if TEST_PAYMETNS else None]),
         InlineKeyboardMarkup(inline_keyboard=[[year_1], [year_2], [year_3]])
     ]
 
