@@ -142,6 +142,8 @@ async def my_subs(message: types.Message):
                 inactive_subs.append(sub)
         await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs),
                              reply_markup=get_active_subscriptions_keyboard(active_subs))
+    else:
+        await message.answer(text=get_empty_subscriptions_message())
 
 
 # Получение инфо-ии по конкретной подписке пользователя

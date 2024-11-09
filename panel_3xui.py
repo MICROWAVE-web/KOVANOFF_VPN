@@ -6,6 +6,8 @@ import uuid
 from decouple import config
 from py3xui import Api, Client
 
+from headers import tz
+
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 

@@ -128,23 +128,23 @@ def get_empty_subscriptions_message():
 
 
 def get_actual_subscriptions_message(active_subs, inactive_subs):
-    active_subs_text = ""
+    active_subs_text = []
     for sub in active_subs:
-        active_subs_text += f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
+        active_subs_text.append(f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
 От: {sub['datetime_operation']}
-До: {sub['datetime_expire']}</blockquote>"""
+До: {sub['datetime_expire']}</blockquote>""")
 
-    inactive_subs_text = ""
+    inactive_subs_text = []
     for sub in inactive_subs:
-        inactive_subs_text += f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
+        inactive_subs_text.append(f"""<blockquote>{subscriptions[sub['subscription']]['name']}        
 От: {sub['datetime_operation']}
-До: {sub['datetime_expire']}</blockquote>"""
+До: {sub['datetime_expire']}</blockquote>""")
 
     return f"""
 📋 Вот список всех ваших VPN подписок: 🌐
 
-{"🟢 Активные подписки:" + active_subs_text if len(active_subs_text) > 0 else ""}
-{"🔴 Истёкшие подписки:" + inactive_subs_text if len(inactive_subs_text) > 0 else ""}
+{"🟢 Активные подписки:" + ' '.join(active_subs_text) if len(active_subs_text) > 0 else ""}
+{"🔴 Истёкшие подписки:" + ' '.join(inactive_subs_text) if len(inactive_subs_text) > 0 else ""}
 Ключи активных подписок:
 """
 
