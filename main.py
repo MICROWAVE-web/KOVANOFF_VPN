@@ -204,7 +204,7 @@ async def save_subscription(user_id, payment, notification, datetime_expire, pan
                 ],
             })
         else:
-            user_data['try_period'] = True if try_period else False
+            user_data['try_period'] = True if try_period else user_data['try_period']
             user_data['subscriptions'].append(
                 {
                     'payment_id': notification.object.id if try_period is False else '-',
