@@ -52,6 +52,8 @@ def get_qr_code(config_url):
 
 
 async def referral_reward(referral):
+    if referral == "":
+        return
     user_id = referral
     user_data = get_user_data(user_id)
     if user_data['sale'] >= 15:
