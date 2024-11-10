@@ -51,15 +51,18 @@ def cancel_subscribtion(user_id, panel_uuid):
     :param panel_uuid:
     :return:
     """
-    user_data = get_user_data(user_id)
-    for sub in user_data['subscriptions']:
-        if sub['panel_uuid'] == panel_uuid:
-            exp_date = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT)
-            now_date = datetime.now(tz) + timedelta(hours=1)
-            if exp_date > now_date:
-                logging.info(
-                    f"Подписка {user_id=} {panel_uuid=} не будет отменена, тк была продлена до {sub['datetime_expire']}")
-                return
+    try:
+        user_data = get_user_data(user_id)
+        for sub in user_data['subscriptions']:
+            if sub['panel_uuid'] == panel_uuid:
+                exp_date = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT)
+                now_date = datetime.now(tz) + timedelta(hours=1)
+                if exp_date > now_date:
+                    logging.info(
+                        f"Подписка {user_id=} {panel_uuid=} не будет отменена, тк была продлена до {sub['datetime_expire']}")
+                    return
+    except Exception as e:
+        wakeup_admins("Ошибка при сверке времени подписки")
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()
