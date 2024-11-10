@@ -63,6 +63,7 @@ def cancel_subscribtion(user_id, panel_uuid):
                     return
     except Exception as e:
         wakeup_admins("Ошибка при сверке времени подписки")
+        traceback.print_exc()
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()
