@@ -410,7 +410,7 @@ async def create_new_client(user_id, payment, notification):
         # Вычисляем времена
         datetime_expire = datetime.now(tz) + user_delta
 
-        datetime_remind = datetime_expire + user_delta * K_remind
+        datetime_remind = datetime.now(tz) + user_delta * K_remind
 
         # Записываем в users.json
         await save_subscription(user_id, payment, notification, datetime_expire, panel_uuid)
@@ -449,10 +449,9 @@ async def conti_client(user_id, payment, notification):
         panel_uuid = payment['panel_uuid']
         for sub in user_data['subscriptions']:
             if sub['panel_uuid'] == panel_uuid:
-                user_sub = sub['subscription']
-                new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + \
-                                      subscriptions[user_sub]['period']
-                datetime_remind = new_datetime_expire + user_delta * K_remind
+                new_datetime_expire = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).date() + user_delta
+                datetime_remind = datetime.strptime(sub['datetime_expire'],
+                                                    DATETIME_FORMAT).date() + user_delta * K_remind
 
                 # Продлеваем в 3x-ui
                 api = login()
