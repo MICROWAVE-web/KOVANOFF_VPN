@@ -125,7 +125,7 @@ async def get_statistic(message: types.Message):
                         paid_users_today += 1
                         break
             if paid_users_total_fl:
-                paid_users_today += 1
+                paid_users_total += 1
 
         # Проверка на пустого пользователя
         if len(user_info.get("subscriptions", [])) == 0 and user_info.get("try_period", False) is False:
