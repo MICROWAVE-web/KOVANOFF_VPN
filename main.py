@@ -99,7 +99,7 @@ async def send_welcome(message: types.Message, command: CommandObject = None):
         }
         save_user(user_id, user_data)
 
-    await message.reply(text=get_welcome_message(), reply_markup=get_welcome_keyboard())
+    await bot.send_message(user_id, text=get_welcome_message(), reply_markup=get_welcome_keyboard())
 
 
 # Список доступных подписок
