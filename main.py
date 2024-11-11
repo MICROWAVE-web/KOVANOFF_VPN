@@ -80,6 +80,7 @@ async def get_ref(message: types.Message):
 async def get_statistic(message: types.Message):
     user_id = message.from_user.id
     if str(user_id) not in ADMINS:
+        await bot.send_message(user_id, get_wrong_command_message())
         return
     # Переменные для подсчета
     total_users = 0
