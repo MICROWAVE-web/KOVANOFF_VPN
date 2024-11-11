@@ -71,7 +71,7 @@ def get_subs_keyboard():
                                         callback_data="year_3")
 
     return [
-        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3], [testday_1]]),
+        InlineKeyboardMarkup(inline_keyboard=[[month_1], [month_2], [month_3]]),
         InlineKeyboardMarkup(inline_keyboard=[[year_1], [year_2], [year_3]])
     ] if not TEST_PAYMETNS else [
         InlineKeyboardMarkup(inline_keyboard=[[testday_1]]),
