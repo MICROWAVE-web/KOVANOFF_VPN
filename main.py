@@ -119,7 +119,7 @@ async def get_statistic(message: types.Message):
             # Проверяем, была ли подписка оформлена сегодня
             for subscription in user_info["subscriptions"]:
                 operation_date = datetime.strptime(subscription["datetime_operation"], DATETIME_FORMAT).date()
-                if operation_date == today:
+                if operation_date == today and subscription["subscription"] != "try_period":
                     paid_users_today += 1
                     break
 
