@@ -131,7 +131,7 @@ async def my_subs(message: types.Message):
     """
     user_data = get_user_data(message.from_user.id)
     if user_data is None:
-        await message.answer(text=get_empty_subscriptions_message())
+        await bot.send_message(chat_id=message.from_user.id, text=get_empty_subscriptions_message())
     elif len(user_data['subscriptions']) > 0:
         active_subs = []
         inactive_subs = []
@@ -142,10 +142,11 @@ async def my_subs(message: types.Message):
                 active_subs.append(sub)
             else:
                 inactive_subs.append(sub)
-        await message.answer(text=get_actual_subscriptions_message(active_subs, inactive_subs),
-                             reply_markup=get_active_subscriptions_keyboard(active_subs))
+        await bot.send_message(chat_id=message.from_user.id,
+                               text=get_actual_subscriptions_message(active_subs, inactive_subs),
+                               reply_markup=get_active_subscriptions_keyboard(active_subs))
     else:
-        await message.answer(text=get_empty_subscriptions_message())
+        await bot.send_message(chat_id=message.from_user.id, text=get_empty_subscriptions_message())
 
 
 # Получение инфо-ии по конкретной подписке пользователя
