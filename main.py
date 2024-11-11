@@ -544,6 +544,12 @@ async def payment_webhook_handler(request):
         return web.Response(status=500)
 
 
+# Обработчик пользовательского соглашения
+async def user_agreement(request):
+    with open('user_agreement/agreement.html', 'r', encoding='utf-8') as f:
+        return web.Response(text=f.read(), content_type='text/html')
+
+
 async def on_startup(bot: Bot) -> None:
     webhook_url = f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}"
     webhook_info = await bot.get_webhook_info()
@@ -579,6 +585,7 @@ if __name__ == '__main__':
 
         app = web.Application()
         app.router.add_post(PAYMENT_WEBHOOK_PATH, payment_webhook_handler)
+        app.router.add_get('/user_agreement', user_agreement)
 
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dp,
