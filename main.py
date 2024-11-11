@@ -114,14 +114,18 @@ async def get_statistic(message: types.Message):
 
         # Проверка на подписки
         if len(user_info.get("subscriptions", [])) > 0:
-            paid_users_total += 1
+            paid_users_total_fl = False
 
             # Проверяем, была ли подписка оформлена сегодня
             for subscription in user_info["subscriptions"]:
                 operation_date = datetime.strptime(subscription["datetime_operation"], DATETIME_FORMAT).date()
-                if operation_date == today and subscription["subscription"] != "try_period":
-                    paid_users_today += 1
-                    break
+                if subscription["subscription"] != "try_period":
+                    paid_users_total_fl = True
+                    if operation_date == today:
+                        paid_users_today += 1
+                        break
+            if paid_users_total_fl:
+                paid_users_today += 1
 
         # Проверка на пустого пользователя
         if len(user_info.get("subscriptions", [])) == 0 and user_info.get("try_period", False) is False:
@@ -130,8 +134,8 @@ async def get_statistic(message: types.Message):
     text = f"""Общая статистика:
 1) Общее количество : {total_users}
 2) Количество  с пробной подпиской (всего): {try_period_users_total}
-3) Количество  с пробной подпиской (за сегодня): {try_period_users_today}
-4) Количество  с платной подпиской (всего): {paid_users_total}
+3) Количество  с платной подпиской (всего): {paid_users_total}
+4) Количество  с пробной подпиской (за сегодня): {try_period_users_today} 
 5) Количество  с платной подпиской (за сегодня): {paid_users_today}
 6) Количество пустых: {empty_users}"""
 
