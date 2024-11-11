@@ -1,6 +1,7 @@
 import datetime
 import logging
 import sys
+import traceback
 import uuid
 
 from decouple import config
@@ -61,11 +62,13 @@ def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total
 
 
 def delete_client(api, name):
-    inbound, nc = get_client_and_inbound_by_email(api, name)
     try:
+        inbound, nc = get_client_and_inbound_by_email(api, name)
         api.client.delete(inbound.id, nc.id)
-    except AttributeError:
+    except TypeError:
         print("Client does not exist")
+    except Exception:
+        traceback.print_exc()
 
 
 def get_client_url(api, name):

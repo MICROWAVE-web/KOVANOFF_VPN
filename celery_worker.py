@@ -18,18 +18,20 @@ from panel_3xui import login, delete_client
 # Инициализация Celery
 app = Celery('tasks', broker='redis://localhost:6379/0')
 app.conf.broker_connection_retry_on_startup = True
+
+# Бот
 bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 # Логгирвание
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
+async def send_message(user_id, text): await bot.send_message(user_id, text)
+
+
 def wakeup_admins(message):
     for admin in ADMINS:
-        bot.send_message(chat_id=admin, text=message)
-
-
-async def send_message(user_id, text): await bot.send_message(user_id, text)
+        asyncio.run(send_message(admin, message))
 
 
 @app.task
