@@ -97,7 +97,7 @@ async def get_statistic(message: types.Message):
     data = load_users()
 
     # Проходим по каждому пользователю
-    for user_id, user_info in data.items():
+    for _, user_info in data.items():
         total_users += 1  # Считаем общего пользователя
 
         # Проверка на try_period
@@ -118,7 +118,7 @@ async def get_statistic(message: types.Message):
 
             # Проверяем, была ли подписка оформлена сегодня
             for subscription in user_info["subscriptions"]:
-                operation_date = datetime.strptime(subscription["datetime_operation"], "%Y-%m-%d %H:%M").date()
+                operation_date = datetime.strptime(subscription["datetime_operation"], DATETIME_FORMAT).date()
                 if operation_date == today:
                     paid_users_today += 1
                     break
@@ -127,14 +127,16 @@ async def get_statistic(message: types.Message):
         if len(user_info.get("subscriptions", [])) == 0 and user_info.get("try_period", False) is False:
             empty_users += 1
 
+    text = f"""Общая статистика:
+1) Общее количество : {total_users}
+2) Количество  с пробной подпиской (всего): {try_period_users_total}
+3) Количество  с пробной подпиской (за сегодня): {try_period_users_today}
+4) Количество  с платной подпиской (всего): {paid_users_total}
+5) Количество  с платной подпиской (за сегодня): {paid_users_today}
+6) Количество пустых: {empty_users}"""
+
     # Вывод статистики
-    await bot.send_message(user_id, f'''Общая статистика:
-    1) Общее количество пользователей: {total_users}")
-    2) Количество пользователей с пробной подпиской (всего): {try_period_users_total}")
-    3) Количество пользователей с пробной подпиской (за сегодня): {try_period_users_today}")
-    4) Количество пользователей с платной подпиской (всего): {paid_users_total}")
-    5) Количество пользователей с платной подпиской (за сегодня): {paid_users_today}")
-    6) Количество пустых пользователей: {empty_users}"''')
+    await bot.send_message(chat_id=user_id, text=text)
 
 
 # Приветствие
