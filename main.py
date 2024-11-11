@@ -6,7 +6,7 @@ import sys
 import time
 import traceback
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 
 import qrcode
 import redis
@@ -74,6 +74,66 @@ async def get_ref(message: types.Message):
         await bot.send_message(user_id, get_ref_link_message(link))
     else:
         await bot.send_message(user_id, f"Напиши /start")
+
+
+@router.message(Command('statistic'))
+async def get_statistic(message: types.Message):
+    user_id = message.from_user.id
+    if str(user_id) not in ADMINS:
+        return
+    # Переменные для подсчета
+    total_users = 0
+    try_period_users_total = 0
+    try_period_users_today = 0
+    paid_users_total = 0
+    paid_users_today = 0
+    empty_users = 0
+
+    # Текущая дата для проверки
+    today = date.today()
+
+    # Данные о пользователях
+    data = load_users()
+
+    # Проходим по каждому пользователю
+    for user_id, user_info in data.items():
+        total_users += 1  # Считаем общего пользователя
+
+        # Проверка на try_period
+        if user_info.get("try_period", False):
+            try_period_users_total += 1
+
+            # Проверяем, если дата операции совпадает с сегодняшней датой
+            for subscription in user_info.get("subscriptions", []):
+                if subscription["subscription"] == "try_period":
+                    operation_date = datetime.strptime(subscription["datetime_operation"], DATETIME_FORMAT).date()
+                    if operation_date == today:
+                        try_period_users_today += 1
+                        break
+
+        # Проверка на подписки
+        if len(user_info.get("subscriptions", [])) > 0:
+            paid_users_total += 1
+
+            # Проверяем, была ли подписка оформлена сегодня
+            for subscription in user_info["subscriptions"]:
+                operation_date = datetime.strptime(subscription["datetime_operation"], "%Y-%m-%d %H:%M").date()
+                if operation_date == today:
+                    paid_users_today += 1
+                    break
+
+        # Проверка на пустого пользователя
+        if len(user_info.get("subscriptions", [])) == 0 and user_info.get("try_period", False) is False:
+            empty_users += 1
+
+    # Вывод статистики
+    await bot.send_message(user_id, f'''Общая статистика:
+    1) Общее количество пользователей: {total_users}")
+    2) Количество пользователей с пробной подпиской (всего): {try_period_users_total}")
+    3) Количество пользователей с пробной подпиской (за сегодня): {try_period_users_today}")
+    4) Количество пользователей с платной подпиской (всего): {paid_users_total}")
+    5) Количество пользователей с платной подпиской (за сегодня): {paid_users_today}")
+    6) Количество пустых пользователей: {empty_users}"''')
 
 
 # Приветствие
