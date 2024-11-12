@@ -26,12 +26,12 @@ bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=Par
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
-async def send_message(user_id, text): await bot.send_message(user_id, text)
+async def _send_message(user_id, text): await bot.send_message(user_id, text)
 
 
 def wakeup_admins(message):
     for admin in ADMINS:
-        asyncio.run(send_message(admin, message))
+        asyncio.run(_send_message(admin, message))
 
 
 @app.task
@@ -42,7 +42,7 @@ def send_message(user_id, text):
     :param text:
     :return:
     """
-    asyncio.run(send_message(user_id, text))
+    asyncio.run(_send_message(user_id, text))
 
 
 @app.task
