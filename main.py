@@ -77,7 +77,7 @@ async def get_ref(message: types.Message):
 
 
 # Проверка актуалности подписки:
-@router.message(Command('statistic'))
+@router.message(Command('cancel_subs'))
 async def get_statistic(message: types.Message):
     user_id = message.from_user.id
     if str(user_id) not in ADMINS:
