@@ -62,7 +62,7 @@ def cancel_subscribtion(user_id, panel_uuid):
                 if exp_date > now_date:
                     logging.info(
                         f"Подписка {user_id=} {panel_uuid=} не будет отменена, тк была продлена до {sub['datetime_expire']}")
-                    return
+                    return False
     except Exception as e:
         wakeup_admins("Ошибка при сверке времени подписки")
         traceback.print_exc()
@@ -88,6 +88,7 @@ def cancel_subscribtion(user_id, panel_uuid):
         await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
 
     asyncio.run(_snd_prompt(user_id))
+    return True
 
 
 @app.task

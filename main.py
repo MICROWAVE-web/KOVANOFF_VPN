@@ -76,6 +76,31 @@ async def get_ref(message: types.Message):
         await bot.send_message(user_id, f"Напиши /start")
 
 
+# Проверка актуалности подписки:
+@router.message(Command('statistic'))
+async def get_statistic(message: types.Message):
+    user_id = message.from_user.id
+    if str(user_id) not in ADMINS:
+        await bot.send_message(user_id, get_wrong_command_message())
+        return
+
+    suc_cancel = 0
+    fail_cancel = 0
+    data = load_users()
+    for usr_id, user_info in data.items():
+        for subscription in user_info.get("subscriptions", []):
+            res = celery_worker.cancel_subscribtion(usr_id, subscription['panel_uuid'])
+            if res:
+                suc_cancel += 1
+            else:
+                fail_cancel += 1
+    text = f"""
+Отменены: {suc_cancel}
+Активны: {fail_cancel}"""
+    await bot.send_message(user_id, text)
+
+
+# Статистика
 @router.message(Command('statistic'))
 async def get_statistic(message: types.Message):
     user_id = message.from_user.id
