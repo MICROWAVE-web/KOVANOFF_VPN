@@ -91,7 +91,7 @@ async def get_statistic(message: types.Message):
     for usr_id, user_info in data.items():
         for subscription in user_info.get("subscriptions", []):
             res = celery_worker.cancel_subscribtion.delay(usr_id, subscription['panel_uuid'])
-            output = res.get(timeout=1)
+            output = res.get(timeout=3)
             if output is True:
                 suc_cancel += 1
             elif output is False:
