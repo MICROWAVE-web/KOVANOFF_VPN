@@ -19,6 +19,9 @@ from panel_3xui import login, delete_client
 app = Celery('tasks', broker='redis://localhost:6379/0')
 app.conf.broker_connection_retry_on_startup = True
 
+# Пример настройки бекенда для хранения результатов в Redis
+app.conf.result_backend = 'redis://localhost:6379/2'
+
 # Бот
 bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
