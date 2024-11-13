@@ -56,12 +56,13 @@ async def referral_reward(referral):
         return
     user_id = referral
     user_data = get_user_data(user_id)
-    if user_data['sale'] >= 15:
-        await bot.send_message(user_id, get_sale_limit_message(user_data['sale']))
-    else:
-        user_data['sale'] += 3
-        save_user(user_id, user_data)
-        await bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
+    if user_data is not None:
+        if user_data['sale'] >= 15:
+            await bot.send_message(user_id, get_sale_limit_message(user_data['sale']))
+        else:
+            user_data['sale'] += 3
+            save_user(user_id, user_data)
+            await bot.send_message(user_id, get_sale_increase_message(user_data['sale']))
 
 
 # Создание реф. ссылок
