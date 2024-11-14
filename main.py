@@ -208,9 +208,10 @@ async def get_sub(call: CallbackQuery, state: FSMContext):
 # Список доступных подписок
 @router.callback_query(F.data == 'get_sub')
 async def get_sub(call: CallbackQuery, state: FSMContext):
+    user_sale = int(get_user_data(call.from_user.id).get('sale', 0))
     if TEST_PAYMETNS is not True or str(call.from_user.id) in ADMINS:
-        await call.message.answer(text=get_subs_message()[0], reply_markup=get_subs_keyboard()[0])
-        await call.message.answer(text=get_subs_message()[1], reply_markup=get_subs_keyboard()[1])
+        await call.message.answer(text=get_subs_message(user_sale)[0], reply_markup=get_subs_keyboard(user_sale)[0])
+        await call.message.answer(text=get_subs_message(user_sale)[1], reply_markup=get_subs_keyboard(user_sale)[1])
     else:
         await bot.send_message(call.from_user.id, text=get_service_working_message())
     await state.clear()

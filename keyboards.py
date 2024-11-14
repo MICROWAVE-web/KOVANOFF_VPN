@@ -42,34 +42,35 @@ def get_welcome_keyboard():
 
 # Блок список подписок
 
-def get_subs_message():
-    return ["""
+def get_subs_message(sale: int=0):
+    return [f"""
 Выбирайте удобный план и наслаждайтесь безопасным интернет-серфингом! 🌐
 
 ✅ Безопасные платежи через ЮКасса
 ✅ Гарантия возврата средств в течение 3-х дней после приобретения подписки 
 
+{f'🔖 Ваша скидка: {sale}%' if sale else ''}
 📅 Ежемесячные подписки:
 """, "🗓️ Годовые подписки (✅ Экономия 20%):"]
 
 
-def get_subs_keyboard():
+def get_subs_keyboard(sale: int=0):
     testday_1 = types.InlineKeyboardButton(
-        text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price']}₽",
+        text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price'] * (100 - sale) / 100}₽",
         callback_data="testday_1")
 
-    month_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['month_1']['price']}₽",
+    month_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['month_1']['price'] * (100 - sale) / 100}₽",
                                          callback_data="month_1")
-    month_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['month_2']['price']}₽",
+    month_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['month_2']['price'] * (100 - sale) / 100}₽",
                                          callback_data="month_2")
-    month_3 = types.InlineKeyboardButton(text=f"3 устройство - {subscriptions['month_3']['price']}₽",
+    month_3 = types.InlineKeyboardButton(text=f"3 устройство - {subscriptions['month_3']['price'] * (100 - sale) / 100}₽",
                                          callback_data="month_3")
 
-    year_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['year_1']['price']}₽",
+    year_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['year_1']['price'] * (100 - sale) / 100}₽",
                                         callback_data="year_1")
-    year_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['year_2']['price']}₽",
+    year_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['year_2']['price'] * (100 - sale) / 100}₽",
                                         callback_data="year_2")
-    year_3 = types.InlineKeyboardButton(text=f"3 устройство - {subscriptions['year_3']['price']}₽",
+    year_3 = types.InlineKeyboardButton(text=f"3 устройство - {subscriptions['year_3']['price'] * (100 - sale) / 100}₽",
                                         callback_data="year_3")
 
     return [
