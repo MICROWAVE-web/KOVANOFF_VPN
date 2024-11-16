@@ -689,6 +689,11 @@ if __name__ == '__main__':
         app = web.Application()
         app.router.add_post(PAYMENT_WEBHOOK_PATH, payment_webhook_handler)
         app.router.add_get('/user_agreement', user_agreement)
+
+        # Страница лендинг
+        app.router.add_static('/assets/',
+                              path='assets',
+                              name='assets')
         app.router.add_get('/landing', landing_page)
 
         webhook_requests_handler = SimpleRequestHandler(
