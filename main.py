@@ -646,11 +646,17 @@ async def user_agreement(request):
     with open('user_agreement/agreement.html', 'r', encoding='utf-8') as f:
         return web.Response(text=f.read(), content_type='text/html')
 
+
 # Обработчик пользовательского соглашения
 async def landing_page(request):
     with open('landing/index.html', 'r', encoding='utf-8') as f:
         return web.Response(text=f.read(), content_type='text/html')
 
+
+# Обработчик пользовательского соглашения
+async def yandex_verification(request):
+    with open('yandex_verification/yandex_f70dd47ee8e11ab5.html', 'r', encoding='utf-8') as f:
+        return web.Response(text=f.read(), content_type='text/html')
 
 
 async def on_startup(bot: Bot) -> None:
@@ -695,6 +701,9 @@ if __name__ == '__main__':
                               path='landing/assets',
                               name='assets')
         app.router.add_get('/landing', landing_page)
+
+        # Яндекс проверка
+        app.router.add_get('/', yandex_verification)
 
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dp,
