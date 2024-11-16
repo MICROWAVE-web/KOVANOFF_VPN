@@ -393,7 +393,8 @@
                 </div>
                 <div class="col">
                     <ul class="list-inline my-2">
-                        <li class="list-inline-item"><a class="link-secondary" href="/user_agreement">Пользовательское соглашение</a>
+                        <li class="list-inline-item"><a class="link-secondary" href="/user_agreement">Пользовательское
+                            соглашение</a>
                         </li>
                     </ul>
                 </div>
@@ -406,6 +407,16 @@
     AOS.init();
 </script>
 <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+<script>
+    // Находим все элементы с классом gototg
+    document.querySelectorAll('.gototg').forEach(element => {
+    element.addEventListener('click', () => {
+    // Указываем URL для перенаправления
+    window.location.href = 'https://t.me/kovanoff_vpn_bot'; // Замените на нужный сайт
+    });
+    });
+
+</script>
 </body>
 
 </html>
