@@ -692,7 +692,7 @@ if __name__ == '__main__':
 
         # Страница лендинг
         app.router.add_static('/assets/',
-                              path='/landing/assets',
+                              path='landing/assets',
                               name='assets')
         app.router.add_get('/landing', landing_page)
 
