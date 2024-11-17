@@ -72,7 +72,9 @@ def cancel_subscribtion(user_id, panel_uuid):
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()
-        delete_client(api, panel_uuid)
+        res = delete_client(api, panel_uuid)
+        if res is False:
+            raise Exception(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
     except Exception as e:
         wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
         traceback.print_exc()

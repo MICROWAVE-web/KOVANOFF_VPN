@@ -65,10 +65,13 @@ def delete_client(api, name):
     try:
         inbound, nc = get_client_and_inbound_by_email(api, name)
         api.client.delete(inbound.id, nc.id)
+        return True
     except TypeError:
-        print("Client does not exist")
+        print(f"Client does not exist: {name=}")
+        return False
     except Exception:
         traceback.print_exc()
+        return False
 
 
 def get_client_url(api, name):
