@@ -15,11 +15,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, BufferedInputFile, FSInputFile
+from aiogram.types import CallbackQuery, BufferedInputFile, FSInputFile, Message
 from aiogram.utils.deep_linking import create_start_link
 from aiogram.utils.payload import decode_payload
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from telegram.error import RetryAfter
 from yookassa import Payment
 from yookassa.domain.notification import WebhookNotification
 
@@ -639,6 +640,57 @@ async def payment_webhook_handler(request):
         await wakeup_admins(f"Ошибка обработки webhook")
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
+
+
+# Обработчик команды /alert
+@router.message(Command("alert"))
+async def alert_handler(message: Message):
+    # Проверяем, является ли пользователь администратором
+    user_id = message.from_user.id
+    if str(user_id) not in ADMINS:
+        await bot.send_message(user_id, get_wrong_command_message())
+        return
+
+    # Получаем текст сообщения из команды
+    alert_text = message.text.split(" ", 1)
+    if len(alert_text) < 2:
+        await message.reply("❗ Используйте команду в формате: /alert <текст>")
+        return
+
+    message_text = alert_text[1]
+
+    # Подтверждение начала рассылки
+    await message.reply("✅ Начинаю рассылку...")
+
+    # Запускаем массовую рассылку
+    success_count, failed_count = await broadcast_message(message_text)
+
+    # Отправляем отчет об успешности рассылки
+    await message.reply(f"📢 Рассылка завершена!\n✅ Успешно: {success_count}\n❌ Ошибки: {failed_count}")
+
+
+# Функция для отправки массового сообщения
+async def broadcast_message(message_text: str):
+    users = get_users_id()
+    success_count = 0
+    failed_count = 0
+
+    for user_id in users:
+        try:
+            await bot.send_message(chat_id=user_id, text=message_text)
+            success_count += 1
+        except RetryAfter as e:
+            print(f"Превышен лимит запросов. Ожидаем {e.retry_after} секунд...")
+            await asyncio.sleep(e.retry_after)
+            continue
+        except Exception as e:
+            print(f"Ошибка при отправке пользователю {user_id}: {e}")
+            failed_count += 1
+
+        # Делаем небольшую паузу, чтобы избежать ограничений API Telegram
+        await asyncio.sleep(0.05)
+
+    return success_count, failed_count
 
 
 # Обработчик пользовательского соглашения

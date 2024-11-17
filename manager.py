@@ -36,6 +36,10 @@ def load_users():
         return json.load(file)
 
 
+def get_users_id():
+    return list(load_users().keys())
+
+
 def save_user(user_id, user_data):
     user_id = str(user_id)
     users = load_users()
@@ -109,5 +113,7 @@ def remove_payment(payment_id):
 
 # Пример использования
 if __name__ == "__main__":
-    add_payment(1, {1: 2})
-    remove_payment(1)
+    r = get_users_id()
+    print(r)
+    # add_payment(1, {1: 2})
+    # remove_payment(1)
