@@ -29,12 +29,25 @@ bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=Par
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
-async def _send_message(user_id, text): await bot.send_message(user_id, text)
+async def _send_message(user_id, text):
+    await bot.send_message(user_id, text)
 
 
 def wakeup_admins(message):
-    for admin in ADMINS:
-        asyncio.run(_send_message(admin, message))
+    async def send_messages():
+        for admin in ADMINS:
+            try:
+                await _send_message(admin, message)
+            except Exception as e:
+                logging.error(f"Failed to send message to admin {admin}")
+                traceback.print_exc()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(send_messages())
+    finally:
+        loop.close()
 
 
 @app.task
