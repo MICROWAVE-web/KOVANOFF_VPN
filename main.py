@@ -6,7 +6,7 @@ import sys
 import time
 import traceback
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 import qrcode
 import redis
@@ -81,6 +81,13 @@ async def get_ref(message: types.Message):
 # Проверка актуалности подписки:
 @router.message(Command('cancel_subs'))
 async def get_statistic(message: types.Message):
+    def cancel_sub(sub):
+        exp_date = datetime.strptime(sub['datetime_expire'], DATETIME_FORMAT).replace(tzinfo=tz)
+        now_date = datetime.now(tz) + timedelta(hours=1)
+        if exp_date < now_date:
+            return True
+        return False
+
     user_id = message.from_user.id
     if str(user_id) not in ADMINS:
         await bot.send_message(user_id, get_wrong_command_message())
@@ -91,8 +98,10 @@ async def get_statistic(message: types.Message):
     data = load_users()
     for usr_id, user_info in data.items():
         for subscription in user_info.get("subscriptions", []):
-            res = celery_worker.cancel_subscribtion.delay(usr_id, subscription['panel_uuid'])
-            output = res.get(timeout=3)
+            if subscription["active"] is False:
+                continue
+
+            output = cancel_sub(subscription)
             if output is True:
                 suc_cancel += 1
             elif output is False:
