@@ -51,17 +51,6 @@ def wakeup_admins(message):
 
 
 @app.task
-def send_message(user_id, text):
-    """
-
-    :param user_id:
-    :param text:
-    :return:
-    """
-    asyncio.run(_send_message(user_id, text))
-
-
-@app.task
 def cancel_subscribtion(user_id, panel_uuid):
     """
 
@@ -135,4 +124,3 @@ def remind_subscribtion(user_id, days_before_expire, panel_uuid):
         loop.run_until_complete(_snd_prompt(user_id, days_before_expire, panel_uuid))
     finally:
         loop.close()
-
