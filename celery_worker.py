@@ -105,7 +105,13 @@ def cancel_subscribtion(user_id, panel_uuid):
     async def _snd_prompt(usr_id):
         await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
 
-    asyncio.run(_snd_prompt(user_id))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_snd_prompt(user_id))
+    finally:
+        loop.close()
+
     return True
 
 
