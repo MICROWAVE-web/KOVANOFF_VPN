@@ -129,4 +129,10 @@ def remind_subscribtion(user_id, days_before_expire, panel_uuid):
         await bot.send_message(usr_id, text=get_remind_message(days_before_expr),
                                reply_markup=get_continue_keyboard(pnl_uuid))
 
-    asyncio.run(_snd_prompt(user_id, days_before_expire, panel_uuid))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_snd_prompt(user_id, days_before_expire, panel_uuid))
+    finally:
+        loop.close()
+
