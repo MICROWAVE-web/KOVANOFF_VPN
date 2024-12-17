@@ -635,8 +635,14 @@ async def payment_webhook_handler(request):
 
             sub = payment['subscription']
             sub_name = subscriptions[sub]['name']
-            await bot.send_message(user_id, get_canceled_pay_message(),
-                                   reply_markup=get_canceled_pay_keyboard(sub_name, sub))
+            try:
+                await bot.send_message(user_id, get_canceled_pay_message(),
+                                       reply_markup=get_canceled_pay_keyboard(sub_name, sub))
+            except Exception as e:
+                if 'bot was blocked by the user' in str(e):
+                    pass
+                else:
+                    raise
 
             remove_payment(notification.object.id)
 
@@ -646,7 +652,7 @@ async def payment_webhook_handler(request):
             print('Unrecognized event type')
     except Exception as e:
         traceback.print_exc()
-        await wakeup_admins(f"Ошибка обработки webhook")
+        await wakeup_admins(f"Ошибка обработки webhook: {str(e)}")
         logging.error(f"Error processing payment webhook: {str(e)}")
         return web.Response(status=500)
 
