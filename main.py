@@ -767,10 +767,10 @@ if __name__ == '__main__':
         app.router.add_static('/assets/',
                               path='landing/assets',
                               name='assets')
-        app.router.add_get('/landing', landing_page)
+        app.router.add_get('/', landing_page)
 
         # Яндекс проверка
-        app.router.add_get('/', yandex_verification)
+        # app.router.add_get('/', yandex_verification)
 
         webhook_requests_handler = SimpleRequestHandler(
             dispatcher=dp,
