@@ -89,5 +89,7 @@ def continue_client(api, name, new_expiredate):
 
 
 if __name__ == "__main__":
-    r = count_active_subscriptions(7409200490)
-    print(r)
+    api = login()
+    ibs = get_inbounds(api)
+    print(ibs)
+
