@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 import traceback
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from panel_3xui import login, delete_client
 
 # Инициализация Celery
 app = Celery('tasks', broker='redis://localhost:6379/0')
+app.conf.worker_pool = 'eventlet'
 app.conf.broker_connection_retry_on_startup = True
 
 # Пример настройки бекенда для хранения результатов в Redis
@@ -46,6 +48,10 @@ def wakeup_admins(message):
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(send_messages())
+    except RuntimeError:
+        traceback.print_exc()
+        wakeup_admins(f"RuntimeError. Перезапускаю worker")
+        os.system("sudo systemctl restart kovanoff_vpn_worker")
     finally:
         loop.close()
 
@@ -98,6 +104,10 @@ def cancel_subscribtion(user_id, panel_uuid):
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(_snd_prompt(user_id))
+    except RuntimeError:
+        traceback.print_exc()
+        wakeup_admins(f"RuntimeError. Перезапускаю worker")
+        os.system("sudo systemctl restart kovanoff_vpn_worker")
     finally:
         loop.close()
 
@@ -122,5 +132,9 @@ def remind_subscribtion(user_id, days_before_expire, panel_uuid):
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(_snd_prompt(user_id, days_before_expire, panel_uuid))
+    except RuntimeError:
+        traceback.print_exc()
+        wakeup_admins(f"RuntimeError. Перезапускаю worker")
+        os.system("sudo systemctl restart kovanoff_vpn_worker")
     finally:
         loop.close()
