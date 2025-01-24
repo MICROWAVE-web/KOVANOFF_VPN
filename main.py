@@ -362,10 +362,9 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
             api = login()
             user_delta = subscriptions['try_period']['period']
             devices_count = subscriptions['try_period']['devices']
-            speed = subscriptions['try_period']['speed']
             panel_uuid = str(uuid.uuid4())
             logging.info(f"User (id: {panel_uuid}) was created.")
-            add_client(api, panel_uuid, devices_count, user_delta, down=speed, up=speed)
+            add_client(api, panel_uuid, devices_count, user_delta)
             config_url = get_client_url(api, panel_uuid)
 
             datetime_expire = datetime.now(tz) + user_delta
@@ -525,9 +524,8 @@ async def create_new_client(user_id, payment, notification):
         api = login()
         user_delta = subscriptions[payment['subscription']]['period']
         devices_count = subscriptions[payment['subscription']]['devices']
-        speed = subscriptions[payment['subscription']]['speed']
         logging.info(f"User (id: {panel_uuid}) was created.")
-        add_client(api, panel_uuid, devices_count, user_delta, down=speed, up=speed)
+        add_client(api, panel_uuid, devices_count, user_delta)
 
         config_url = get_client_url(api, panel_uuid)
 

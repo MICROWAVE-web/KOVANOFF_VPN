@@ -8,7 +8,6 @@ from decouple import config
 from py3xui import Api, Client
 
 from headers import tz
-from manager import count_active_subscriptions
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -43,7 +42,7 @@ def get_client_and_inbound_by_email(api, name):
                 return inbound, user
 
 
-def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total_gb=0, down=40, up=40):
+def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total_gb=0):
     '''
     :param api:
     :param name:
@@ -57,7 +56,7 @@ def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total
     expiry_time = int((datetime.datetime.now(tz) + expiry_delta).timestamp()) * 1000
     new_client = Client(id=uuid_str, email=name, enable=True,
                         limit_ip=limit_ip, expiry_time=expiry_time,
-                        flow="xtls-rprx-vision", total_gb=total_gb, down=down, up=up)
+                        flow="xtls-rprx-vision", total_gb=total_gb * (1024 ** 3))
     api.client.add(2, [new_client])
 
 
@@ -90,6 +89,6 @@ def continue_client(api, name, new_expiredate):
 
 if __name__ == "__main__":
     api = login()
-    ibs = get_inbounds(api)
-    print(ibs)
+    add_client(api, '526', 2, datetime.timedelta(hours=2), 52)
+
 
