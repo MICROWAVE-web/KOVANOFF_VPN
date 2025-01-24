@@ -43,7 +43,7 @@ def get_client_and_inbound_by_email(api, name):
                 return inbound, user
 
 
-def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total_gb=0):
+def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total_gb=0, down=40, up=40):
     '''
     :param api:
     :param name:
@@ -57,7 +57,7 @@ def add_client(api, name, limit_ip: int, expiry_delta: datetime.timedelta, total
     expiry_time = int((datetime.datetime.now(tz) + expiry_delta).timestamp()) * 1000
     new_client = Client(id=uuid_str, email=name, enable=True,
                         limit_ip=limit_ip, expiry_time=expiry_time,
-                        flow="xtls-rprx-vision", total_gb=total_gb)
+                        flow="xtls-rprx-vision", total_gb=total_gb, down=down, up=up)
     api.client.add(2, [new_client])
 
 
