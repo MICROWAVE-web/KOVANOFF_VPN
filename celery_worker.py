@@ -5,11 +5,12 @@ import sys
 import traceback
 from datetime import datetime, timedelta
 
-from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+# from aiogram.client.default import DefaultBotProperties
+# from aiogram.enums import ParseMode
 from celery import Celery
 from decouple import config
+# from aiogram import Bot
+from telebot import TeleBot
 
 from headers import ADMINS, DATETIME_FORMAT, tz
 from keyboards import get_cancel_subsciption, get_remind_message, get_continue_keyboard, get_cancel_keyboard
@@ -25,21 +26,17 @@ app.conf.broker_connection_retry_on_startup = True
 app.conf.result_backend = 'redis://localhost:6379/2'
 
 # Бот
-bot = Bot(token=config('API_TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot = TeleBot(token=config('API_TOKEN'), parse_mode='HTML')
 
 # Логгирвание
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
-
-async def _send_message(user_id, text):
-    await bot.send_message(user_id, text)
 
 
 def wakeup_admins(message):
     async def send_messages():
         for admin in ADMINS:
             try:
-                await _send_message(admin, message)
+                bot.send_message(chat_id=admin, text=message)
             except Exception as e:
                 logging.error(f"Failed to send message to admin {admin}")
                 traceback.print_exc()
@@ -97,7 +94,9 @@ def cancel_subscribtion(user_id, panel_uuid):
         wakeup_admins(f"Ошибка при деактивации подписки клиента {panel_uuid=} {user_id=}")
         traceback.print_exc()
 
-    async def _snd_prompt(usr_id):
+    bot.send_message(chat_id=user_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
+
+    '''async def _snd_prompt(usr_id):
         await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
 
     loop = asyncio.new_event_loop()
@@ -109,7 +108,7 @@ def cancel_subscribtion(user_id, panel_uuid):
         wakeup_admins(f"RuntimeError. Перезапускаю worker")
         os.system("sudo systemctl restart kovanoff_vpn_worker")
     finally:
-        loop.close()
+        loop.close()'''
 
     return True
 
@@ -124,7 +123,10 @@ def remind_subscribtion(user_id, days_before_expire, panel_uuid):
     :return:
     """
 
-    async def _snd_prompt(usr_id, days_before_expr, pnl_uuid):
+    bot.send_message(chat_id=user_id, text=get_remind_message(days_before_expire),
+                     reply_markup=get_continue_keyboard(panel_uuid))
+
+    '''async def _snd_prompt(usr_id, days_before_expr, pnl_uuid):
         await bot.send_message(usr_id, text=get_remind_message(days_before_expr),
                                reply_markup=get_continue_keyboard(pnl_uuid))
 
@@ -137,4 +139,4 @@ def remind_subscribtion(user_id, days_before_expire, panel_uuid):
         wakeup_admins(f"RuntimeError. Перезапускаю worker")
         os.system("sudo systemctl restart kovanoff_vpn_worker")
     finally:
-        loop.close()
+        loop.close()'''
