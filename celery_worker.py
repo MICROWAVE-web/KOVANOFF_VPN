@@ -19,7 +19,6 @@ from panel_3xui import login, delete_client
 
 # Инициализация Celery
 app = Celery('tasks', broker='redis://localhost:6379/0')
-app.conf.worker_pool = 'eventlet'
 app.conf.broker_connection_retry_on_startup = True
 
 # Пример настройки бекенда для хранения результатов в Redis
