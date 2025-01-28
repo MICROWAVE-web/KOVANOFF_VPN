@@ -1,3 +1,4 @@
+import telebot
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup
 
@@ -42,7 +43,7 @@ def get_welcome_keyboard():
 
 # Блок список подписок
 
-def get_subs_message(sale: int=0):
+def get_subs_message(sale: int = 0):
     return [f"""
 Выбирайте удобный план и наслаждайтесь безопасным интернет-серфингом! 🌐
 
@@ -54,17 +55,20 @@ def get_subs_message(sale: int=0):
 """, "🗓️ Годовые подписки (✅ Экономия 20%):"]
 
 
-def get_subs_keyboard(sale: int=0):
+def get_subs_keyboard(sale: int = 0):
     testday_1 = types.InlineKeyboardButton(
         text=f"1 устройство (тестовая подписка) - {subscriptions['testday_1']['price'] * (100 - sale) / 100}₽",
         callback_data="testday_1")
 
-    month_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['month_1']['price'] * (100 - sale) / 100}₽",
-                                         callback_data="month_1")
-    month_2 = types.InlineKeyboardButton(text=f"2 устройство - {subscriptions['month_2']['price'] * (100 - sale) / 100}₽",
-                                         callback_data="month_2")
-    month_3 = types.InlineKeyboardButton(text=f"3 устройство - {subscriptions['month_3']['price'] * (100 - sale) / 100}₽",
-                                         callback_data="month_3")
+    month_1 = types.InlineKeyboardButton(
+        text=f"1 устройство - {subscriptions['month_1']['price'] * (100 - sale) / 100}₽",
+        callback_data="month_1")
+    month_2 = types.InlineKeyboardButton(
+        text=f"2 устройство - {subscriptions['month_2']['price'] * (100 - sale) / 100}₽",
+        callback_data="month_2")
+    month_3 = types.InlineKeyboardButton(
+        text=f"3 устройство - {subscriptions['month_3']['price'] * (100 - sale) / 100}₽",
+        callback_data="month_3")
 
     year_1 = types.InlineKeyboardButton(text=f"1 устройство - {subscriptions['year_1']['price'] * (100 - sale) / 100}₽",
                                         callback_data="year_1")
@@ -180,13 +184,20 @@ def get_continue_cancell_message():
 
 
 def get_cancel_keyboard():
-    button1 = types.InlineKeyboardButton(text="Приобрести подписку", callback_data="get_sub")
-    return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+    markup = telebot.types.InlineKeyboardMarkup()
+    button = telebot.types.InlineKeyboardButton(text="Приобрести подписку", callback_data="get_sub")
+    markup.add(button)
+    return markup
 
 
 def get_continue_keyboard(panel_uuid):
-    button1 = types.InlineKeyboardButton(text="Продлить подписку", callback_data=f"continue_{panel_uuid}")
-    return InlineKeyboardMarkup(inline_keyboard=[[button1]])
+    markup = telebot.types.InlineKeyboardMarkup()
+    button = telebot.types.InlineKeyboardButton(
+        text="Продлить подписку",
+        callback_data=f"continue_{panel_uuid}"
+    )
+    markup.add(button)
+    return markup
 
 
 # Продление подписки
