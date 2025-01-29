@@ -80,8 +80,11 @@ def cancel_subscribtion(user_id, panel_uuid):
         if res is False:
             raise Exception(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
     except Exception as e:
-        wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
-        traceback.print_exc()
+        if 'Client does not exist' in str(e) or '':
+            pass
+        else:
+            wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
+            traceback.print_exc()
     try:
         user_data = get_user_data(user_id)
         for sub in user_data['subscriptions']:
