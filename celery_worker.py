@@ -73,16 +73,18 @@ def cancel_subscribtion(user_id, panel_uuid):
     except Exception as e:
         wakeup_admins("Ошибка при сверке времени подписки")
         traceback.print_exc()
+
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
         api = login()
         delete_client(api, panel_uuid)
     except Exception as e:
-        if 'Client does not exist' in str(e) or '':
-            pass
+        if 'Client does not exist' in str(e):
+            return True
         else:
             wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
             traceback.print_exc()
+
     try:
         user_data = get_user_data(user_id)
         for sub in user_data['subscriptions']:
@@ -95,20 +97,6 @@ def cancel_subscribtion(user_id, panel_uuid):
         traceback.print_exc()
 
     bot.send_message(chat_id=user_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
-
-    '''async def _snd_prompt(usr_id):
-        await bot.send_message(usr_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(_snd_prompt(user_id))
-    except RuntimeError:
-        traceback.print_exc()
-        wakeup_admins(f"RuntimeError. Перезапускаю worker")
-        os.system("sudo systemctl restart kovanoff_vpn_worker")
-    finally:
-        loop.close()'''
 
     return True
 
