@@ -355,7 +355,7 @@ async def process_try_period(call: CallbackQuery, state: FSMContext):
         user_id = call.from_user.id
         user_data = get_user_data(user_id)
         if user_data is not None and user_data.get("try_period") is not None and user_data["try_period"] is True:
-            await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard())
+            await bot.send_message(user_id, get_cancel_try_period_message(), reply_markup=get_cancel_keyboard_aiogram())
         else:
 
             # Добавляем в 3x-ui
@@ -408,7 +408,7 @@ async def continue_subscribe(call: CallbackQuery, state: FSMContext):
             for sub in user_data['subscriptions']:
                 if sub['panel_uuid'] == panel_uuid and sub['active'] is False:
                     await bot.send_message(user_id, text=get_continue_cancell_message(),
-                                           reply_markup=get_cancel_keyboard())
+                                           reply_markup=get_cancel_keyboard_aiogram())
                     return
 
         if subscription:

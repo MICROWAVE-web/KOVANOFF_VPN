@@ -190,6 +190,11 @@ def get_cancel_keyboard():
     return markup
 
 
+def get_cancel_keyboard_aiogram():
+    button = types.InlineKeyboardButton(text="Приобрести подписку", callback_data="get_sub")
+    return InlineKeyboardMarkup(inline_keyboard=[[button]])
+
+
 def get_continue_keyboard(panel_uuid):
     markup = telebot.types.InlineKeyboardMarkup()
     button = telebot.types.InlineKeyboardButton(
