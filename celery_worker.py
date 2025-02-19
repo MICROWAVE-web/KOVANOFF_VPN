@@ -73,6 +73,7 @@ def cancel_subscribtion(user_id, panel_uuid):
     except Exception as e:
         wakeup_admins("Ошибка при сверке времени подписки")
         traceback.print_exc()
+        return True
 
     try:
         logging.info(f"User (id: {panel_uuid}) was deleted.")
@@ -84,6 +85,7 @@ def cancel_subscribtion(user_id, panel_uuid):
         else:
             wakeup_admins(f"Ошибка при удалении клиента {panel_uuid=} {user_id=}")
             traceback.print_exc()
+            return True
 
     try:
         user_data = get_user_data(user_id)
@@ -95,6 +97,7 @@ def cancel_subscribtion(user_id, panel_uuid):
     except Exception as e:
         wakeup_admins(f"Ошибка при деактивации подписки клиента {panel_uuid=} {user_id=}")
         traceback.print_exc()
+        return True
 
     bot.send_message(chat_id=user_id, text=get_cancel_subsciption(), reply_markup=get_cancel_keyboard())
 
