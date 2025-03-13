@@ -4,82 +4,65 @@
 ## Содержание
 - [Технологии](#технологии)
 - [Начало работы](#начало-работы)
-- [Тестирование](#тестирование)
-- [Deploy и CI/CD](#deploy-и-ci/cd)
-- [Contributing](#contributing)
 - [Команда проекта](#команда-проекта)
 
 ## Технологии
 - [3XUI](https://github.com/MHSanaei/3x-ui)
-- [ЮКасса API](https://www.typescriptlang.org/](https://yookassa.ru/developers)
+- [ЮКасса API](https://yookassa.ru/developers)
 - [Aiogram](https://aiogram.dev/)
 
-## Использование
-
-Установите npm-пакет с помощью команды:
-```sh
-$ npm i your-awesome-plugin-name
-```
-
-И добавьте в свой проект:
-```typescript
-import { hi } from "your-awesome-plugin-name";
-
-hi(); // Выведет в консоль "Привет!"
-```
-
-## Разработка
+## Начало работы
 
 ### Требования
-Для установки и запуска проекта, необходим [NodeJS](https://nodejs.org/) v8+.
+Для установки и запуска проекта, необходим [Python](https://www.python.org/) v3.10
 
-### Установка зависимостей
-Для установки зависимостей, выполните команду:
+Клонируйте и установите зависимости:
 ```sh
-$ npm i
+$ pip install -r requirements.txt
+```
+
+Настройте .env файл:
+
+```
+# Телаграмм бот токен
+API_TOKEN=0000:abcabcabc
+
+TEST_PAYMENTS=1
+
+# Юкасса
+TEST_YOOKASSA_SHOP_ID=00000
+TEST_YOOKASSA_SECRET_KEY=test_abc123123123
+
+YOOKASSA_SHOP_ID=482736
+YOOKASSA_SECRET_KEY=live_abc123123123
+
+#WEBHOOK для ЮКассы
+WEBAPP_PORT=800
+
+WEBHOOK_DOMAIN=domain.com
+WEBHOOK_SECRET=supersecret
+WEBHOOK_SSL_CERT=/etc/letsencrypt/live/DOMAIN/cert.pem
+WEBHOOK_SSL_PRIV=/etc/letsencrypt/live/DOMAIN/privkey.pem
+
+# 3x-ui
+XUI_HOST=https://mypanel/panel/
+XUI_USERNAME=admin
+XUI_PASSWORD=supersescret
+
+# local/server
+MODE=local
+
+# Id Администратора(-ов) Telegram через запятую 
+ADMINS=000000000
 ```
 
 ### Запуск Development сервера
 Чтобы запустить сервер для разработки, выполните команду:
 ```sh
-npm start
+python main.py
 ```
 
-### Создание билда
-Чтобы выполнить production сборку, выполните команду: 
-```sh
-npm run build
-```
-
-## Тестирование
-Какие инструменты тестирования использованы в проекте и как их запускать. Например:
-
-Наш проект покрыт юнит-тестами Jest. Для их запуска выполните команду:
-```sh
-npm run test
-```
-
-## Deploy и CI/CD
-Расскажите, как развернуть приложение. Как запустить пайплайны и т.д.
-
-## Contributing
-Как помочь в разработке проекта? Как отправить предложение или баг-репорт. Как отправить доработку (оформить pull request, какие стайлгайды используются). Можно вынести в отдельный файл — [Contributing.md](./CONTRIBUTING.md).
-
-## FAQ 
-Если потребители вашего кода часто задают одни и те же вопросы, добавьте ответы на них в этом разделе.
-
-### Зачем вы разработали этот проект?
-Чтобы был.
-
-## To do
-- [x] Добавить крутое README
-- [ ] Всё переписать
-- [ ] ...
 
 ## Команда проекта
-Оставьте пользователям контакты и инструкции, как связаться с командой разработки.
+- [Кованов Алексей (Я)](https://t.me/kovanoFFFreelance) — FullStack Engineer
 
-- [Богдан Звягинцев](tg://resolve?domain=bzvyagintsev) — Front-End Engineer
-
-## Источники
-Если вы чем-то вдохновлялись, расскажите об этом: где брали идеи, какие туториалы смотрели, ссылки на исходники кода. 
