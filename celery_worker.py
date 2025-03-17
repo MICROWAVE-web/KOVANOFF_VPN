@@ -18,7 +18,8 @@ app.conf.update(
     result_backend='redis://localhost:6379/2',
     task_acks_late=True,  # Подтверждение выполнения задачи только после успешного завершения
     task_reject_on_worker_lost=True,  # Задача будет заново добавлена в очередь, если воркер умер
-    worker_max_tasks_per_child=100
+    worker_max_tasks_per_child=100,
+    broker_transport_options = {'visibility_timeout': 32140800}
 )
 
 # Бот
